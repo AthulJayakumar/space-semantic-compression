@@ -82,6 +82,15 @@ Model improvement Step 2 adds detail-aware token scoring. This gives extra prior
 
 This is controlled component evidence, not yet a full dataset-level claim. The next benchmark step is to compare `full_system` against `without_detail_term` across Sentinel-2 retention experiments.
 
+Model improvement Step 3 ran that dataset-level check on 100 Sentinel-2 patches at the recommended 80% token-retention operating point:
+
+| 80% Retention Variant | SUS | Detector Retention | PSNR | SSIM | LPIPS |
+|---|---:|---:|---:|---:|---:|
+| Without detail term | 85.47 | 0.877 | 21.74 | 0.854 | 0.5861 |
+| Detail-aware scoring | 85.53 | 0.878 | 21.81 | 0.855 | 0.5855 |
+
+Interpretation: the detail term gives a small but statistically significant improvement in reconstruction quality (PSNR, SSIM, LPIPS) while leaving SUS and detector retention broadly unchanged. This is useful, bounded evidence: detail-aware scoring helps visual/structural preservation, but does not yet create a large wildfire-utility jump.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -297,6 +306,7 @@ Useful documents:
 - [JPEG2000 / CCSDS-Style Baseline Report](results/space_codec_baselines_500/space_codec_baseline_report.md)
 - [Model Improvement Step 1: Operating Point Analysis](results/model_improvement_step1_operating_points/operating_point_analysis_report.md)
 - [Model Improvement Step 2: Detail-Aware Token Scoring](results/model_improvement_step2_token_scoring/token_scoring_improvement_report.md)
+- [Model Improvement Step 3: Sentinel-2 Detail-Term Ablation](results/model_improvement_step3_detail_ablation/detail_term_ablation_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
@@ -329,7 +339,7 @@ Known limitations:
 - Large datasets and checkpoints are not included in this public repo.
 - Real Jetson or flight-hardware deployment still needs further validation.
 - FIRMS and burned-area label alignment should be expanded.
-- Detail-aware token scoring has controlled component evidence and still needs full Sentinel-2 benchmark validation.
+- Detail-aware token scoring improves reconstruction metrics modestly, but does not yet materially improve SUS or detector retention.
 
 ---
 
@@ -337,7 +347,7 @@ Known limitations:
 
 Next research steps:
 
-- run full Sentinel-2 validation for the detail-aware selector
+- scale the detail-term ablation from 100 to 500 Sentinel-2 patches
 - improve FIRMS and burn-scar label alignment
 - produce an arXiv preprint
 - add a short demo video
