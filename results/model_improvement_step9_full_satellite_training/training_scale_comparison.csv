@@ -1,0 +1,3 @@
+run,images,train_samples,validation_samples,epochs,final_train_loss,final_validation_loss,best_validation_loss
+previous_1500_patch,1500,1200,300,8,0.0028440180953354,0.0038452910876367,0.003823576188297
+full_3224_patch,3224,2579,645,12,0.00239500813843,0.0028830812415654,0.0028466161743078
