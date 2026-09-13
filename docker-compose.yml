@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      COMPRESSAI_CHECKPOINT_PATH: /app/checkpoints/vqvae_s16k8.pt
+      COMPRESSAI_OUTPUT_DIR: /app/outputs
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+      - ./outputs:/app/outputs
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      COMPRESSAI_API_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./outputs:/app/outputs:ro
+    depends_on:
+      - backend

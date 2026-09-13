@@ -1,0 +1,62 @@
+default_mission: wildfire_detection
+
+missions:
+  wildfire_detection:
+    detector: wildfire_yolo_or_vision
+    detector_weights: models/checkpoints/wildfire_yolo.pt
+    positive_labels: [fire, smoke, burned_area, thermal_hotspot]
+    utility_weights:
+      detector_confidence: 0.40
+      object_retention: 0.30
+      mission_relevance: 0.20
+      region_preservation: 0.10
+    token_selection:
+      alpha_utility: 0.65
+      beta_entropy: 0.20
+      gamma_cost: 0.15
+    objective_weights:
+      lambda_rate: 0.25
+      lambda_distortion: 0.25
+      lambda_energy: 0.20
+      lambda_utility: 0.30
+    evaluation_metrics: [psnr, ssim, lpips, sus, compression_ratio, bandwidth_saved, energy_per_image]
+
+  flood_detection:
+    detector: flood_yolo_or_vision
+    detector_weights: models/checkpoints/flood_yolo.pt
+    positive_labels: [flood_water, standing_water, river_overflow, damaged_infrastructure]
+    utility_weights:
+      detector_confidence: 0.35
+      object_retention: 0.25
+      mission_relevance: 0.30
+      region_preservation: 0.10
+    token_selection:
+      alpha_utility: 0.60
+      beta_entropy: 0.20
+      gamma_cost: 0.20
+    objective_weights:
+      lambda_rate: 0.25
+      lambda_distortion: 0.20
+      lambda_energy: 0.20
+      lambda_utility: 0.35
+    evaluation_metrics: [psnr, ssim, lpips, sus, water_region_retention, compression_ratio, energy_per_image]
+
+  ship_detection:
+    detector: ship_yolo_or_vision
+    detector_weights: models/checkpoints/ship_yolo.pt
+    positive_labels: [ship, vessel, wake, harbor_object]
+    utility_weights:
+      detector_confidence: 0.45
+      object_retention: 0.35
+      mission_relevance: 0.10
+      region_preservation: 0.10
+    token_selection:
+      alpha_utility: 0.70
+      beta_entropy: 0.15
+      gamma_cost: 0.15
+    objective_weights:
+      lambda_rate: 0.20
+      lambda_distortion: 0.20
+      lambda_energy: 0.15
+      lambda_utility: 0.45
+    evaluation_metrics: [psnr, ssim, lpips, sus, object_recall_proxy, compression_ratio, energy_per_bit]

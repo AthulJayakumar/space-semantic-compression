@@ -1,0 +1,41 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.env
+.venv/
+venv/
+
+# Runtime outputs
+outputs/
+out/
+figures/wildfire_utility/
+*.log
+*.pid
+
+# Large data and model artifacts
+data/
+datasets/**/images/
+datasets/**/labels/
+datasets/**/metadata/
+datasets/**/_source_repo/
+datasets/**/_hf_parts/
+datasets/**/*.tif
+datasets/**/*.tiff
+datasets/**/*.tar.gz
+checkpoints/*
+!checkpoints/README.md
+models/checkpoints/*
+!models/checkpoints/.gitkeep
+!models/checkpoints/README.md
+
+# Experiment bulk outputs
+results/**/raw/
+results/**/intermediate/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,4 @@
+bandwidth_saved_percent_mean,compression_ratio_mean,dataset,detector_retention_mean,method,n_images,sus_ci_high,sus_ci_low,sus_mean
+95.097,25.298596,dfire,0.848587,vqvae_utility_45,50,86.895026,79.271757,83.137418
+96.27,55.5092,flame,0.833664,vqvae_utility_45,18,76.44283,56.653021,65.843278
+99.3519,155.772896,sentinel2,0.741052,vqvae_utility_45,100,82.562042,76.666433,79.52222
