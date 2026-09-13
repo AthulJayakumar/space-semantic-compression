@@ -104,6 +104,8 @@ Model improvement Step 5 applies that decision in the software. The default toke
 
 Model improvement Step 6 starts the next research direction: a **mode-conditioned learned token selector**. This optional PyTorch model predicts token priorities from VQ-VAE token IDs, utility maps, entropy/detail features, and the requested mode. It is implemented and unit tested, but not yet trained or used as the default API path.
 
+Model improvement Step 7 trained that learned selector on **100 Sentinel-2 patches for 10 epochs** using teacher distillation from the validated fixed selectors. Mean training loss decreased from **0.023312** to **0.004012**. This shows the learned selector can fit the mode-conditioned teacher signal; it still needs held-out benchmarking before it should be used in the API.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -323,6 +325,7 @@ Useful documents:
 - [Model Improvement Step 4: 500-Patch Detail-Term Ablation](results/model_improvement_step4_detail_ablation_500/detail_term_ablation_report.md)
 - [Model Improvement Step 5: Mission-Utility Default Selector](results/model_improvement_step5_mission_utility_default/mission_utility_default_report.md)
 - [Model Improvement Step 6: Mode-Conditioned Learned Token Selector](results/model_improvement_step6_mode_conditioned_selector/mode_conditioned_selector_report.md)
+- [Model Improvement Step 7: Learned Selector Training](results/model_improvement_step7_learned_selector_training/training_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
@@ -356,7 +359,7 @@ Known limitations:
 - Real Jetson or flight-hardware deployment still needs further validation.
 - FIRMS and burned-area label alignment should be expanded.
 - Detail-aware token scoring improves reconstruction metrics modestly, but slightly reduces SUS and detector retention on the 500-patch Sentinel-2 ablation.
-- The learned mode-conditioned selector is implemented as a research component, but it still needs training and dataset-level validation.
+- The learned mode-conditioned selector has completed initial 100-patch training, but still needs held-out dataset-level validation.
 
 ---
 
@@ -366,6 +369,7 @@ Next research steps:
 
 - make the no-detail selector the mission-utility default and keep detail-aware scoring as an optional reconstruction-balanced mode
 - train and benchmark the mode-conditioned learned token selector
+- run learned-vs-fixed selector benchmarking on held-out Sentinel-2 patches
 - improve FIRMS and burn-scar label alignment
 - produce an arXiv preprint
 - add a short demo video
