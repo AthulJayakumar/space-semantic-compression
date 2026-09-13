@@ -106,6 +106,8 @@ Model improvement Step 6 starts the next research direction: a **mode-conditione
 
 Model improvement Step 7 trained that learned selector on **100 Sentinel-2 patches for 10 epochs** using teacher distillation from the validated fixed selectors. Mean training loss decreased from **0.023312** to **0.004012**. This shows the learned selector can fit the mode-conditioned teacher signal; it still needs held-out benchmarking before it should be used in the API.
 
+Model improvement Step 8 scaled training to **1,500 real Sentinel-2/CEMS-derived patches** with a reproducible 80/20 train/validation split. The learned selector trained on 1,200 patches and validated on 300 held-out patches. Final train loss was **0.002844** and final validation loss was **0.003845**.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -326,6 +328,7 @@ Useful documents:
 - [Model Improvement Step 5: Mission-Utility Default Selector](results/model_improvement_step5_mission_utility_default/mission_utility_default_report.md)
 - [Model Improvement Step 6: Mode-Conditioned Learned Token Selector](results/model_improvement_step6_mode_conditioned_selector/mode_conditioned_selector_report.md)
 - [Model Improvement Step 7: Learned Selector Training](results/model_improvement_step7_learned_selector_training/training_report.md)
+- [Model Improvement Step 8: Large Sentinel-2 Training](results/model_improvement_step8_large_satellite_training/training_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
@@ -359,7 +362,7 @@ Known limitations:
 - Real Jetson or flight-hardware deployment still needs further validation.
 - FIRMS and burned-area label alignment should be expanded.
 - Detail-aware token scoring improves reconstruction metrics modestly, but slightly reduces SUS and detector retention on the 500-patch Sentinel-2 ablation.
-- The learned mode-conditioned selector has completed initial 100-patch training, but still needs held-out dataset-level validation.
+- The learned mode-conditioned selector has completed 1,500-patch Sentinel-2 training, but still needs held-out dataset-level compression validation.
 
 ---
 

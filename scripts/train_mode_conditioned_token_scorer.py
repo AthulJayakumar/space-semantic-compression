@@ -49,8 +49,11 @@ def main() -> None:
     parser.add_argument("--hidden-channels", type=int, default=32)
     parser.add_argument("--token-embedding-dim", type=int, default=16)
     parser.add_argument("--device", default="auto")
+    parser.add_argument("--validation-fraction", type=float, default=0.2)
+    parser.add_argument("--seed", type=int, default=1234)
     args = parser.parse_args()
 
+    torch.manual_seed(args.seed)
     service = get_compression_service()
     device = resolve_training_device(args.device)
     codebook_size = int(service.encoder_service.config.get("codebook_size", 8192))
@@ -64,29 +67,21 @@ def main() -> None:
     samples = build_training_samples(Path(args.dataset_dir), args.limit, service)
     if not samples:
         raise ValueError(f"No training images found in {args.dataset_dir}")
+    train_samples, validation_samples = split_samples(samples, args.validation_fraction, args.seed)
 
     log_rows: list[dict[str, object]] = []
-    model.train()
     for epoch in range(1, args.epochs + 1):
-        epoch_losses: list[float] = []
-        for sample in samples:
-            for mode_name, target_scores in sample["targets"].items():
-                optimizer.zero_grad(set_to_none=True)
-                logits = model(
-                    sample["tokens"].to(device),
-                    sample["utility"].to(device),
-                    sample["entropy"].to(device),
-                    sample["detail"].to(device),
-                    mode_name,
-                )
-                target = target_scores.unsqueeze(0).to(device)
-                loss = F.mse_loss(torch.sigmoid(logits), target)
-                loss.backward()
-                optimizer.step()
-                epoch_losses.append(float(loss.detach().cpu()))
-        row = {"epoch": epoch, "mean_loss": float(np.mean(epoch_losses)), "samples": len(samples)}
+        train_loss = train_one_epoch(model, optimizer, train_samples, device)
+        validation_loss = evaluate_loss(model, validation_samples, device)
+        row = {
+            "epoch": epoch,
+            "train_loss": train_loss,
+            "validation_loss": validation_loss,
+            "train_samples": len(train_samples),
+            "validation_samples": len(validation_samples),
+        }
         log_rows.append(row)
-        print(f"epoch={epoch} mean_loss={row['mean_loss']:.6f}")
+        print(f"epoch={epoch} train_loss={train_loss:.6f} validation_loss={validation_loss:.6f}")
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,13 +91,78 @@ def main() -> None:
             "config": config.__dict__,
             "modes": MODE_TO_INDEX,
             "teacher_weights": {name: weights.__dict__ for name, weights in TEACHERS.items()},
-            "training": {"epochs": args.epochs, "learning_rate": args.learning_rate, "samples": len(samples)},
+            "training": {
+                "epochs": args.epochs,
+                "learning_rate": args.learning_rate,
+                "samples": len(samples),
+                "train_samples": len(train_samples),
+                "validation_samples": len(validation_samples),
+                "validation_fraction": args.validation_fraction,
+                "seed": args.seed,
+            },
         },
         output_path,
     )
     write_training_log(output_path.with_suffix(".csv"), log_rows)
     write_report(output_path.with_suffix(".md"), output_path, log_rows, args)
     print(output_path)
+
+
+def split_samples(samples: list[dict[str, object]], validation_fraction: float, seed: int) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    fraction = float(np.clip(validation_fraction, 0.0, 0.8))
+    if len(samples) < 2 or fraction <= 0:
+        return samples, []
+    rng = np.random.default_rng(seed)
+    indices = np.arange(len(samples))
+    rng.shuffle(indices)
+    validation_count = max(1, int(round(len(samples) * fraction)))
+    validation_indices = set(indices[:validation_count].tolist())
+    train_samples = [sample for idx, sample in enumerate(samples) if idx not in validation_indices]
+    validation_samples = [sample for idx, sample in enumerate(samples) if idx in validation_indices]
+    return train_samples, validation_samples
+
+
+def train_one_epoch(model: ModeConditionedTokenScorer, optimizer: torch.optim.Optimizer, samples: list[dict[str, object]], device: torch.device) -> float:
+    model.train()
+    losses: list[float] = []
+    for sample in samples:
+        for mode_name, target_scores in sample["targets"].items():
+            optimizer.zero_grad(set_to_none=True)
+            loss = sample_loss(model, sample, mode_name, target_scores, device)
+            loss.backward()
+            optimizer.step()
+            losses.append(float(loss.detach().cpu()))
+    return float(np.mean(losses)) if losses else 0.0
+
+
+def evaluate_loss(model: ModeConditionedTokenScorer, samples: list[dict[str, object]], device: torch.device) -> float:
+    if not samples:
+        return 0.0
+    model.eval()
+    losses: list[float] = []
+    with torch.no_grad():
+        for sample in samples:
+            for mode_name, target_scores in sample["targets"].items():
+                losses.append(float(sample_loss(model, sample, mode_name, target_scores, device).detach().cpu()))
+    return float(np.mean(losses)) if losses else 0.0
+
+
+def sample_loss(
+    model: ModeConditionedTokenScorer,
+    sample: dict[str, object],
+    mode_name: str,
+    target_scores: torch.Tensor,
+    device: torch.device,
+) -> torch.Tensor:
+    logits = model(
+        sample["tokens"].to(device),
+        sample["utility"].to(device),
+        sample["entropy"].to(device),
+        sample["detail"].to(device),
+        mode_name,
+    )
+    target = target_scores.unsqueeze(0).to(device)
+    return F.mse_loss(torch.sigmoid(logits), target)
 
 
 def build_training_samples(dataset_dir: Path, limit: int | None, service) -> list[dict[str, object]]:
@@ -157,13 +217,14 @@ def resolve_training_device(requested: str) -> torch.device:
 
 def write_training_log(path: Path, rows: list[dict[str, object]]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["epoch", "mean_loss", "samples"])
+        writer = csv.DictWriter(handle, fieldnames=["epoch", "train_loss", "validation_loss", "train_samples", "validation_samples"])
         writer.writeheader()
         writer.writerows(rows)
 
 
 def write_report(path: Path, checkpoint_path: Path, rows: list[dict[str, object]], args: argparse.Namespace) -> None:
-    final_loss = rows[-1]["mean_loss"] if rows else "n/a"
+    final_train_loss = rows[-1]["train_loss"] if rows else "n/a"
+    final_validation_loss = rows[-1]["validation_loss"] if rows else "n/a"
     path.write_text(
         "\n".join(
             [
@@ -177,10 +238,12 @@ def write_report(path: Path, checkpoint_path: Path, rows: list[dict[str, object]
                 f"- Training images: {args.limit}",
                 f"- Epochs: {args.epochs}",
                 f"- Learning rate: {args.learning_rate}",
+                f"- Validation fraction: {args.validation_fraction}",
                 f"- Output checkpoint: `{checkpoint_path}`",
                 "",
                 "## Result",
-                f"- Final mean distillation loss: {final_loss}",
+                f"- Final train distillation loss: {final_train_loss}",
+                f"- Final validation distillation loss: {final_validation_loss}",
                 "",
                 "## Interpretation",
                 "This checkpoint is not automatically used by the API. It is a research artifact for evaluating whether a learned, mode-conditioned selector can outperform fixed hand-weighted token scoring.",

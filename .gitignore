@@ -18,6 +18,7 @@ figures/wildfire_utility/
 data/
 datasets/**/images/
 datasets/sentinel2_500_patch/
+datasets/sentinel2_*_patch*/
 datasets/**/labels/
 datasets/**/metadata/
 datasets/**/_source_repo/
