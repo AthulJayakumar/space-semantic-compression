@@ -39,6 +39,7 @@ class SelectorSpec:
     name: str
     kind: str
     checkpoint_path: Path | None = None
+    learned_weight: float = 0.0
 
 
 def main() -> None:
@@ -52,6 +53,11 @@ def main() -> None:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--skip-lpips", action="store_true")
     parser.add_argument(
+        "--hybrid-weights",
+        default="",
+        help="Comma-separated learned-score weights for hybrid fixed+learned selectors, for example 0.1,0.2,0.3.",
+    )
+    parser.add_argument(
         "--checkpoint",
         action="append",
         default=[],
@@ -62,11 +68,11 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     service = get_compression_service()
     device = resolve_device(args.device)
-    selectors = build_selectors(args.checkpoint)
+    selectors = build_selectors(args.checkpoint, parse_hybrid_weights(args.hybrid_weights))
     learned_models = {
         spec.name: load_learned_model(spec.checkpoint_path, device)
         for spec in selectors
-        if spec.kind == "learned" and spec.checkpoint_path is not None and spec.checkpoint_path.exists()
+        if spec.kind in {"learned", "hybrid"} and spec.checkpoint_path is not None and spec.checkpoint_path.exists()
     }
     if not learned_models:
         raise FileNotFoundError("No learned selector checkpoints were found for benchmarking.")
@@ -91,7 +97,7 @@ def main() -> None:
     print(json.dumps({"rows": len(rows), "images": len(image_paths), "output_dir": str(args.output_dir)}, indent=2))
 
 
-def build_selectors(checkpoint_args: list[str]) -> list[SelectorSpec]:
+def build_selectors(checkpoint_args: list[str], hybrid_weights: list[float] | None = None) -> list[SelectorSpec]:
     selectors = [SelectorSpec(name="fixed_mission_utility", kind="fixed")]
     if checkpoint_args:
         for item in checkpoint_args:
@@ -106,7 +112,25 @@ def build_selectors(checkpoint_args: list[str]) -> list[SelectorSpec]:
         ("learned_full_3224_patch", Path("models/checkpoints/mode_conditioned_token_scorer_sentinel2_full.pt")),
     ]
     selectors.extend(SelectorSpec(name=name, kind="learned", checkpoint_path=path) for name, path in defaults if path.exists())
+    full_checkpoint = Path("models/checkpoints/mode_conditioned_token_scorer_sentinel2_full.pt")
+    for weight in hybrid_weights or []:
+        if full_checkpoint.exists():
+            fixed_weight = 1.0 - weight
+            name = f"hybrid_fixed_{fixed_weight:.2f}_learned_{weight:.2f}".replace(".", "p")
+            selectors.append(SelectorSpec(name=name, kind="hybrid", checkpoint_path=full_checkpoint, learned_weight=weight))
     return selectors
+
+
+def parse_hybrid_weights(raw: str) -> list[float]:
+    if not raw.strip():
+        return []
+    weights = []
+    for item in raw.split(","):
+        value = float(item.strip())
+        if value <= 0.0 or value >= 1.0:
+            raise ValueError("Hybrid learned weights must be between 0 and 1.")
+        weights.append(value)
+    return weights
 
 
 def evaluate_image(
@@ -136,11 +160,19 @@ def evaluate_image(
         started = time.perf_counter()
         if spec.kind == "fixed":
             keep_mask, _ = fixed_pruner.select(tokens, utility_map, keep_ratio)
-        else:
+        elif spec.kind == "learned":
             model = learned_models.get(spec.name)
             if model is None:
                 continue
             keep_mask, _ = learned_mask(model, tokens, utility_map, entropy_map, detail_map, keep_ratio, device)
+        else:
+            model = learned_models.get(spec.name)
+            if model is None:
+                continue
+            fixed_scores = fixed_pruner.score_tokens(tokens, utility_map)
+            _, learned_scores = learned_mask(model, tokens, utility_map, entropy_map, detail_map, keep_ratio, device)
+            blended_scores = blend_scores(fixed_scores, learned_scores, spec.learned_weight)
+            keep_mask = topk_numpy_mask(blended_scores, keep_ratio)
 
         pruned_tokens = service.token_service.prune_tokens(tokens, keep_mask)
         reconstruction = tensor_to_image(service.decoder_service.decode(pruned_tokens))
@@ -201,6 +233,31 @@ def learned_mask(
             keep_ratio,
         )
     return keep_mask.squeeze(0).detach().cpu().numpy().astype(bool), scores.squeeze(0).detach().cpu().numpy()
+
+
+def blend_scores(fixed_scores: np.ndarray, learned_scores: np.ndarray, learned_weight: float) -> np.ndarray:
+    fixed = normalize_numpy(fixed_scores)
+    learned = normalize_numpy(learned_scores)
+    weight = float(np.clip(learned_weight, 0.0, 1.0))
+    return normalize_numpy((1.0 - weight) * fixed + weight * learned)
+
+
+def topk_numpy_mask(scores: np.ndarray, keep_ratio: float) -> np.ndarray:
+    total = scores.size
+    keep_count = max(1, int(round(total * float(np.clip(keep_ratio, 0.01, 1.0)))))
+    order = np.argsort(-scores.reshape(-1))
+    mask = np.zeros(total, dtype=bool)
+    mask[order[:keep_count]] = True
+    return mask.reshape(scores.shape)
+
+
+def normalize_numpy(values: np.ndarray) -> np.ndarray:
+    values = values.astype("float32")
+    lo = float(values.min()) if values.size else 0.0
+    hi = float(values.max()) if values.size else 0.0
+    if hi - lo < 1e-8:
+        return np.zeros_like(values, dtype="float32")
+    return (values - lo) / (hi - lo)
 
 
 def validation_images(dataset_dir: Path, validation_fraction: float, seed: int, limit: int | None) -> list[Path]:
