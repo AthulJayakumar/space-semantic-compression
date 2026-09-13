@@ -16,7 +16,7 @@ from research.objective import ResearchObjective
 from semantic_ai.detector_base import MissionDetectorOutput
 from semantic_ai import FloodDetector, ShipDetector, WildfireDetector
 from backend.services.semantic_service import SemanticService
-from token_selection.utility_pruner import UtilityAwareTokenPruner
+from token_selection.utility_pruner import TokenSelectionWeights, UtilityAwareTokenPruner
 from transmission.energy_model import EnergyModel
 
 
@@ -70,17 +70,25 @@ def test_utility_pruner_prefers_high_utility_token():
     assert scores.shape == (4, 4)
 
 
-def test_utility_pruner_can_prioritize_structural_detail():
+def test_reconstruction_balanced_pruner_can_prioritize_structural_detail():
     tokens = torch.zeros((1, 4, 4), dtype=torch.long)
     utility = np.zeros((4, 4), dtype="float32")
     detail = np.zeros((4, 4), dtype="float32")
     detail[1, 2] = 1.0
 
-    keep, scores = UtilityAwareTokenPruner().select(tokens, utility, keep_ratio=0.0625, detail_map=detail)
+    pruner = UtilityAwareTokenPruner(TokenSelectionWeights.reconstruction_balanced())
+    keep, scores = pruner.select(tokens, utility, keep_ratio=0.0625, detail_map=detail)
 
     assert keep.sum() == 1
     assert keep[1, 2]
     assert scores[1, 2] == scores.max()
+
+
+def test_default_pruner_is_mission_utility_mode():
+    weights = TokenSelectionWeights()
+
+    assert weights.delta_detail == 0.0
+    assert weights == TokenSelectionWeights.mission_utility()
 
 
 def test_semantic_service_detail_map_matches_token_shape():

@@ -9,6 +9,8 @@ readers can understand where the file fits before reading implementation details
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -27,6 +29,7 @@ class TransmissionConfig(BaseModel):
     outage_probability: float = Field(default=0.05, ge=0, le=1)
     packet_size_bytes: int = Field(default=1024, gt=0)
     semantic_keep_ratio: float = Field(default=0.45, gt=0, le=1)
+    token_selection_mode: Literal["mission_utility", "reconstruction_balanced", "custom"] = "mission_utility"
 
 
 class TransmissionStats(BaseModel):
@@ -74,6 +77,7 @@ class CompressionResponse(BaseModel):
     semantic_heatmap_path: str | None = None
     token_mask_path: str | None = None
     mission: str = "wildfire_detection"
+    token_selection_mode: str = "mission_utility"
     detector_backend: str | None = None
     semantic_utility_score: float | None = None
     objective_value: float | None = None

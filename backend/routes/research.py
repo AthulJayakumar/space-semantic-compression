@@ -45,6 +45,7 @@ async def simulate_transmission(
     outage_probability: float = Form(0.05),
     packet_size_bytes: int = Form(1024),
     semantic_keep_ratio: float = Form(0.45),
+    token_selection_mode: str = Form("mission_utility"),
     semantic_method: str = Form("hybrid"),
     mission: str = Form("wildfire_detection"),
     service: CompressionService = Depends(get_compression_service),
@@ -57,6 +58,7 @@ async def simulate_transmission(
         outage_probability=outage_probability,
         packet_size_bytes=packet_size_bytes,
         semantic_keep_ratio=semantic_keep_ratio,
+        token_selection_mode=token_selection_mode,
     )
     try:
         return service.compress_image(payload, image.filename or "upload", config, semantic_method=semantic_method, mission=mission)

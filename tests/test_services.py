@@ -75,3 +75,9 @@ def test_satellite_simulation_saves_time_for_smaller_payload():
 
     assert stats.transmission_time_saved_sec > 0
     assert stats.packets_total > 0
+
+
+def test_transmission_config_defaults_to_mission_utility_mode():
+    config = TransmissionConfig()
+
+    assert config.token_selection_mode == "mission_utility"

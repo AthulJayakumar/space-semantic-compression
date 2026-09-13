@@ -103,7 +103,7 @@ class PublicationExperimentRunner:
                     result = self.service.compress_image(
                         payload,
                         image_path.name,
-                        TransmissionConfig(semantic_keep_ratio=keep_ratio),
+                        TransmissionConfig(semantic_keep_ratio=keep_ratio, token_selection_mode="custom"),
                         mission=mission,
                     )
                     rows.append(self._row_from_result(image_path, name, keep_ratio, result))

@@ -30,6 +30,7 @@ async def compress_image(
     latency_ms: float = Form(600.0),
     packet_loss_percent: float = Form(2.0),
     outage_probability: float = Form(0.05),
+    token_selection_mode: str = Form("mission_utility"),
     semantic_method: str = Form("hybrid"),
     mission: str = Form("wildfire_detection"),
     service: CompressionService = Depends(get_compression_service),
@@ -55,6 +56,7 @@ async def compress_image(
             latency_ms=latency_ms,
             packet_loss_percent=packet_loss_percent,
             outage_probability=outage_probability,
+            token_selection_mode=token_selection_mode,
         )
         return service.compress_image(payload, image.filename or "upload", config, semantic_method=semantic_method, mission=mission)
     except FileNotFoundError as exc:

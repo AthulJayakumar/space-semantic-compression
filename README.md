@@ -100,6 +100,8 @@ Model improvement Step 4 scaled the same ablation to **500 Sentinel-2 patches**:
 
 Interpretation: the 500-patch result confirms the trade-off. Detail-aware scoring improves PSNR, SSIM, and LPIPS, but slightly reduces SUS and detector retention. For the primary wildfire semantic-utility objective, the no-detail selector is currently stronger. Detail-aware scoring should be treated as an optional reconstruction-balanced mode rather than the default mission-utility mode.
 
+Model improvement Step 5 applies that decision in the software. The default token selection mode is now **mission_utility**, using utility + entropy + cost without the detail term. The detail-aware selector remains available as **reconstruction_balanced** for demos or experiments that prioritize visual reconstruction quality.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -317,6 +319,7 @@ Useful documents:
 - [Model Improvement Step 2: Detail-Aware Token Scoring](results/model_improvement_step2_token_scoring/token_scoring_improvement_report.md)
 - [Model Improvement Step 3: Sentinel-2 Detail-Term Ablation](results/model_improvement_step3_detail_ablation/detail_term_ablation_report.md)
 - [Model Improvement Step 4: 500-Patch Detail-Term Ablation](results/model_improvement_step4_detail_ablation_500/detail_term_ablation_report.md)
+- [Model Improvement Step 5: Mission-Utility Default Selector](results/model_improvement_step5_mission_utility_default/mission_utility_default_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)

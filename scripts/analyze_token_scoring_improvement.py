@@ -38,7 +38,7 @@ def main() -> None:
     old_pruner = UtilityAwareTokenPruner(
         TokenSelectionWeights(alpha_utility=0.65, beta_entropy=0.20, gamma_cost=0.15, delta_detail=0.0)
     )
-    new_pruner = UtilityAwareTokenPruner()
+    new_pruner = UtilityAwareTokenPruner(TokenSelectionWeights.reconstruction_balanced())
 
     rows: list[dict[str, object]] = []
     for keep_ratio in (0.10, 0.20, 0.30, 0.40):

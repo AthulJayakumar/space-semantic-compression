@@ -82,7 +82,7 @@ def main() -> None:
                     result = service.compress_image(
                         payload,
                         filename=image_path.name,
-                        transmission_config=TransmissionConfig(semantic_keep_ratio=keep_ratio),
+                        transmission_config=TransmissionConfig(semantic_keep_ratio=keep_ratio, token_selection_mode="custom"),
                         mission=args.mission,
                     )
                     rows.append(row_from_result(image_path, image_index, variant, keep_ratio, result))

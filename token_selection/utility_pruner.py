@@ -17,10 +17,18 @@ import torch
 
 @dataclass(frozen=True)
 class TokenSelectionWeights:
-    alpha_utility: float = 0.55
-    beta_entropy: float = 0.20
-    gamma_cost: float = 0.05
-    delta_detail: float = 0.20
+    alpha_utility: float = 0.65
+    beta_entropy: float = 0.25
+    gamma_cost: float = 0.10
+    delta_detail: float = 0.0
+
+    @classmethod
+    def mission_utility(cls) -> "TokenSelectionWeights":
+        return cls(alpha_utility=0.65, beta_entropy=0.25, gamma_cost=0.10, delta_detail=0.0)
+
+    @classmethod
+    def reconstruction_balanced(cls) -> "TokenSelectionWeights":
+        return cls(alpha_utility=0.55, beta_entropy=0.20, gamma_cost=0.05, delta_detail=0.20)
 
 
 class UtilityAwareTokenPruner:

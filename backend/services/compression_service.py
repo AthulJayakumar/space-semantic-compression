@@ -31,7 +31,7 @@ from backend.services.semantic_service import SemanticService
 from backend.services.token_transmission_service import TokenTransmissionService
 from backend.services.transmission_service import SatelliteTransmissionService
 from backend.services.visualization_service import VisualizationService
-from token_selection.utility_pruner import UtilityAwareTokenPruner
+from token_selection.utility_pruner import TokenSelectionWeights, UtilityAwareTokenPruner
 from transmission.energy_model import EnergyModel
 from backend.utils.file_utils import unique_output_path
 from backend.utils.image_utils import load_image_bytes, save_png
@@ -94,8 +94,9 @@ class CompressionService:
             semantic_analysis = self.semantic_service.analyze(original, token_shape, method=semantic_method)
             detector_output = self._detect_mission_utility(original, token_shape, mission)
             utility_map = np.maximum(semantic_analysis.importance_map, detector_output.utility_map)
-            detail_map = self.semantic_service.detail_map(original, token_shape)
-            keep_mask, token_scores = self.utility_pruner.select(
+            token_pruner = self._token_pruner_for_config(config)
+            detail_map = self.semantic_service.detail_map(original, token_shape) if token_pruner.weights.delta_detail > 0 else None
+            keep_mask, token_scores = token_pruner.select(
                 tokens,
                 utility_map,
                 config.semantic_keep_ratio,
@@ -183,6 +184,7 @@ class CompressionService:
             semantic_heatmap_path=str(heatmap_path),
             token_mask_path=str(token_mask_path),
             mission=mission,
+            token_selection_mode=config.token_selection_mode,
             detector_backend=detector_output.backend,
             semantic_utility_score=round(sus, 4),
             objective_value=objective.objective,
@@ -235,6 +237,13 @@ class CompressionService:
             device=str(self.encoder_service.device),
             token_generation_rate=round(profiler.token_generation_rate(), 4),
         )
+
+    def _token_pruner_for_config(self, config: TransmissionConfig) -> UtilityAwareTokenPruner:
+        if config.token_selection_mode == "mission_utility":
+            return UtilityAwareTokenPruner(TokenSelectionWeights.mission_utility())
+        if config.token_selection_mode == "reconstruction_balanced":
+            return UtilityAwareTokenPruner(TokenSelectionWeights.reconstruction_balanced())
+        return self.utility_pruner
 
     def _detect_mission_utility(self, original, token_shape: tuple[int, int], mission: str):
         detector = self.detectors.get(mission, self.detectors["wildfire_detection"])

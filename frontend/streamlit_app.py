@@ -42,6 +42,11 @@ with st.sidebar:
     packet_loss_percent = st.slider("Packet loss %", 0.0, 25.0, 2.0, step=0.5)
     outage_probability = st.slider("Outage probability", 0.0, 0.5, 0.05, step=0.01)
     semantic_keep_ratio = st.slider("Semantic token keep ratio", 0.05, 1.0, 0.45, step=0.05)
+    token_selection_mode = st.selectbox(
+        "Token selection mode",
+        ["mission_utility", "reconstruction_balanced"],
+        format_func=lambda value: "Mission utility" if value == "mission_utility" else "Reconstruction balanced",
+    )
     semantic_method = st.selectbox("Semantic analyzer", ["hybrid", "saliency", "segmentation", "object"])
 
 uploaded = st.file_uploader("Satellite or aerial image", type=["png", "jpg", "jpeg", "webp"])
@@ -67,6 +72,7 @@ if uploaded:
         "packet_loss_percent": packet_loss_percent,
         "outage_probability": outage_probability,
         "semantic_keep_ratio": semantic_keep_ratio,
+        "token_selection_mode": token_selection_mode,
         "semantic_method": semantic_method,
     }
 
