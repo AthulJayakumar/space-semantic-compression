@@ -54,6 +54,15 @@ The current benchmark uses DFire, FLAME, and Sentinel-2/CEMS wildfire-related im
 **SUS** means **Semantic Utility Score**.  
 It measures how much wildfire-relevant information survives compression and reconstruction.
 
+Additional 500-patch Sentinel-2 conventional codec validation:
+
+| Baseline | Patches | SUS | Detector Retention | PSNR | SSIM | Bandwidth Saved | Compression Ratio |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| JPEG2000 rate-20 | 500 | 95.15 | 0.964 | 30.94 | 0.978 | 95.01% | 20.04x |
+| CCSDS-style wavelet proxy Q24 | 500 | 82.74 | 0.881 | 25.35 | 0.934 | 93.34% | 23.93x |
+
+The CCSDS-style result is a transform-coding proxy, **not** a certified CCSDS implementation.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -266,6 +275,7 @@ Useful documents:
 
 - [Experiment Results Report](reports/experiment_results_2000_word_report.md)
 - [Testing and Validation Report](reports/testing_validation_report.md)
+- [JPEG2000 / CCSDS-Style Baseline Report](results/space_codec_baselines_500/space_codec_baseline_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)

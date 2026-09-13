@@ -1,0 +1,8 @@
+{
+  "image_dir": "datasets\\sentinel2_500_patch\\images",
+  "images": 500,
+  "methods": [
+    "ccsds_wavelet_proxy_q24",
+    "jpeg2000_rate_20"
+  ]
+}

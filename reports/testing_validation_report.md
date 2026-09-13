@@ -1,6 +1,6 @@
 # Testing and Validation Report
 
-Generated: 2026-09-13 22:27:00
+Generated: 2026-09-13 22:57:01
 
 Repository: `space-semantic-compression`
 
@@ -116,7 +116,23 @@ The included Sentinel-2 retention file contains `1000` rows. This corresponds to
 
 This supports operating-point analysis: lower token retention improves communication savings, while higher retention improves utility and detector preservation.
 
-## 9. Main Supported Research Claims
+## 9. JPEG2000 and CCSDS-Style Baseline Expansion
+
+A 500-patch Sentinel-2/CEMS benchmark was prepared locally from available Sentinel-2 imagery. Raw patches are not committed to GitHub, but the baseline summary and report are included.
+
+| Method | Patches | SUS | Detector Retention | PSNR | SSIM | Compression Ratio | Bandwidth Saved |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ccsds_wavelet_proxy_q24 | 500 | 82.74 | 0.881 | 25.35 | 0.934 | 23.93x | 93.34% |
+| jpeg2000_rate_20 | 500 | 95.15 | 0.964 | 30.94 | 0.978 | 20.04x | 95.01% |
+
+Interpretation:
+
+- JPEG2000 is now included as a serious space-relevant conventional codec baseline.
+- The CCSDS-style wavelet result should be described as a proxy only, not as a certified CCSDS implementation.
+- These results strengthen ESA/DLR-facing positioning by adding conventional space-compression references.
+- The results also reinforce the honest conclusion that conventional codecs remain strong for detector retention and image quality.
+
+## 10. Main Supported Research Claims
 
 Based on the tests and included validation tables, the following claims are currently supported:
 
@@ -128,29 +144,29 @@ Based on the tests and included validation tables, the following claims are curr
 6. JPEG remains a strong baseline and should be treated honestly in publications.
 7. The strongest research framing is mission-utility preservation under extreme satellite communication constraints.
 
-## 10. Current Limitations
+## 11. Current Limitations
 
 The following limitations should be stated clearly in supervisor outreach and papers:
 
 - Public repo does not include raw datasets or model checkpoint binaries.
 - Full benchmark reproduction requires local dataset setup.
 - Sentinel-2 validation is currently 100 scenes, not yet 500+ scenes.
-- JPEG2000 and CCSDS-style baselines should be added for stronger ESA/DLR positioning.
+- JPEG2000 baseline is now included; a certified CCSDS codec is still needed for flight-standard CCSDS claims.
 - Real Jetson or flight-like hardware testing is still future work.
 - FLAME sample size is small, so FLAME results should be treated as preliminary.
 
-## 11. Recommended Next Validation Steps
+## 12. Recommended Next Validation Steps
 
 Priority order:
 
 1. Add a small permissively licensed sample image and a lightweight demo mode.
 2. Add a GitHub Actions workflow for unit tests.
-3. Add JPEG2000 baseline comparison.
-4. Expand Sentinel-2 benchmark to 500+ scenes.
+3. Integrate a certified CCSDS 122/123 codec if available.
+4. Expand Sentinel-2 benchmark from 500 patches to 500+ independent georeferenced scenes.
 5. Add FIRMS and burn-scar label alignment details.
 6. Run edge benchmarks on real Jetson-class hardware if available.
 7. Record a 2-3 minute demo video for supervisors and job applications.
 
-## 12. Conclusion
+## 13. Conclusion
 
-The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. For peer-reviewed publication, the next important step is not more README polishing, but broader benchmark reproduction with local datasets, stronger baselines, and hardware validation.
+The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. The new JPEG2000 and CCSDS-style 500-patch baselines improve space-agency relevance. For peer-reviewed publication, the next important step is broader benchmark reproduction with independent georeferenced scenes, a certified CCSDS codec, and hardware validation.

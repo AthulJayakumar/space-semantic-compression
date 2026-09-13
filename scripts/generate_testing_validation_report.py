@@ -125,12 +125,36 @@ def stats_summary(rows: list[dict[str, str]]) -> str:
     return "\n".join(lines)
 
 
+def codec_baseline_table(rows: list[dict[str, str]]) -> str:
+    if not rows:
+        return "No JPEG2000/CCSDS-style baseline summary was found."
+    lines = [
+        "| Method | Patches | SUS | Detector Retention | PSNR | SSIM | Compression Ratio | Bandwidth Saved |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for row in rows:
+        lines.append(
+            "| {method} | {n} | {sus} | {det} | {psnr} | {ssim} | {cr}x | {bw}% |".format(
+                method=row.get("method", ""),
+                n=row.get("n_images", ""),
+                sus=fmt(row.get("semantic_utility_score_mean")),
+                det=fmt(row.get("detector_retention_mean"), 3),
+                psnr=fmt(row.get("psnr_mean")),
+                ssim=fmt(row.get("ssim_mean"), 3),
+                cr=fmt(row.get("compression_ratio_mean")),
+                bw=fmt(row.get("bandwidth_saved_percent_mean")),
+            )
+        )
+    return "\n".join(lines)
+
+
 def main() -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     cross = read_csv(SUMMARY_DIR / "table1_cross_dataset_comparison.csv")
     sentinel = read_csv(SUMMARY_DIR / "table2_sentinel2_results.csv")
     stats = read_csv(SUMMARY_DIR / "table4_statistical_significance.csv")
     retention = read_csv(SUMMARY_DIR / "sentinel2_100_scene_results.csv")
+    codec_rows = read_csv(ROOT / "results" / "space_codec_baselines_500" / "space_codec_baseline_summary.csv")
 
     report = f"""# Testing and Validation Report
 
@@ -232,7 +256,20 @@ The included Sentinel-2 retention file contains `{len(retention)}` rows. This co
 
 This supports operating-point analysis: lower token retention improves communication savings, while higher retention improves utility and detector preservation.
 
-## 9. Main Supported Research Claims
+## 9. JPEG2000 and CCSDS-Style Baseline Expansion
+
+A 500-patch Sentinel-2/CEMS benchmark was prepared locally from available Sentinel-2 imagery. Raw patches are not committed to GitHub, but the baseline summary and report are included.
+
+{codec_baseline_table(codec_rows)}
+
+Interpretation:
+
+- JPEG2000 is now included as a serious space-relevant conventional codec baseline.
+- The CCSDS-style wavelet result should be described as a proxy only, not as a certified CCSDS implementation.
+- These results strengthen ESA/DLR-facing positioning by adding conventional space-compression references.
+- The results also reinforce the honest conclusion that conventional codecs remain strong for detector retention and image quality.
+
+## 10. Main Supported Research Claims
 
 Based on the tests and included validation tables, the following claims are currently supported:
 
@@ -244,32 +281,32 @@ Based on the tests and included validation tables, the following claims are curr
 6. JPEG remains a strong baseline and should be treated honestly in publications.
 7. The strongest research framing is mission-utility preservation under extreme satellite communication constraints.
 
-## 10. Current Limitations
+## 11. Current Limitations
 
 The following limitations should be stated clearly in supervisor outreach and papers:
 
 - Public repo does not include raw datasets or model checkpoint binaries.
 - Full benchmark reproduction requires local dataset setup.
 - Sentinel-2 validation is currently 100 scenes, not yet 500+ scenes.
-- JPEG2000 and CCSDS-style baselines should be added for stronger ESA/DLR positioning.
+- JPEG2000 baseline is now included; a certified CCSDS codec is still needed for flight-standard CCSDS claims.
 - Real Jetson or flight-like hardware testing is still future work.
 - FLAME sample size is small, so FLAME results should be treated as preliminary.
 
-## 11. Recommended Next Validation Steps
+## 12. Recommended Next Validation Steps
 
 Priority order:
 
 1. Add a small permissively licensed sample image and a lightweight demo mode.
 2. Add a GitHub Actions workflow for unit tests.
-3. Add JPEG2000 baseline comparison.
-4. Expand Sentinel-2 benchmark to 500+ scenes.
+3. Integrate a certified CCSDS 122/123 codec if available.
+4. Expand Sentinel-2 benchmark from 500 patches to 500+ independent georeferenced scenes.
 5. Add FIRMS and burn-scar label alignment details.
 6. Run edge benchmarks on real Jetson-class hardware if available.
 7. Record a 2-3 minute demo video for supervisors and job applications.
 
-## 12. Conclusion
+## 13. Conclusion
 
-The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. For peer-reviewed publication, the next important step is not more README polishing, but broader benchmark reproduction with local datasets, stronger baselines, and hardware validation.
+The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. The new JPEG2000 and CCSDS-style 500-patch baselines improve space-agency relevance. For peer-reviewed publication, the next important step is broader benchmark reproduction with independent georeferenced scenes, a certified CCSDS codec, and hardware validation.
 """
 
     REPORT_PATH.write_text(report, encoding="utf-8")

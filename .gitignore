@@ -17,6 +17,7 @@ figures/wildfire_utility/
 # Large data and model artifacts
 data/
 datasets/**/images/
+datasets/sentinel2_500_patch/
 datasets/**/labels/
 datasets/**/metadata/
 datasets/**/_source_repo/
@@ -33,6 +34,7 @@ models/checkpoints/*
 # Experiment bulk outputs
 results/**/raw/
 results/**/intermediate/
+results/space_codec_baselines_smoke/
 
 # OS/editor files
 .DS_Store
