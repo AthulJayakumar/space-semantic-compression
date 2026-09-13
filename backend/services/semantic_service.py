@@ -74,6 +74,18 @@ class SemanticService:
     def semantic_token_count(self, image: Image.Image, token_shape: tuple[int, int]) -> int:
         return int(self.estimate_importance_mask(image, token_shape).sum())
 
+    def detail_map(self, image: Image.Image, token_shape: tuple[int, int]) -> np.ndarray:
+        """Return token-scale structural detail so compression preserves important boundaries."""
+        gray = np.asarray(image.convert("L")).astype("float32") / 255.0
+        if cv2 is not None:
+            grad_x = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+            grad_y = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+            detail = cv2.magnitude(grad_x, grad_y)
+        else:
+            grad_y, grad_x = np.gradient(gray)
+            detail = np.sqrt(np.square(grad_x) + np.square(grad_y))
+        return self.resize_importance(self._normalize(detail), token_shape)
+
     def resize_importance(self, importance: np.ndarray, token_shape: tuple[int, int]) -> np.ndarray:
         height, width = token_shape
         if cv2 is not None:

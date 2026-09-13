@@ -73,6 +73,15 @@ Model improvement Step 1 identified a better operating point for the current uti
 
 This improves the research story: 80% retention preserves most of the semantic utility of full VQ-VAE while keeping stronger compression than the full-token setting.
 
+Model improvement Step 2 adds detail-aware token scoring. This gives extra priority to structural boundaries such as fire fronts, smoke edges, infrastructure outlines, and burn-scar contours when utility scores are tied.
+
+| Controlled Token Test | Boundary Retention at 10% Tokens |
+|---|---:|
+| Utility + entropy only | 28.57% |
+| Detail-aware utility scoring | 92.86% |
+
+This is controlled component evidence, not yet a full dataset-level claim. The next benchmark step is to compare `full_system` against `without_detail_term` across Sentinel-2 retention experiments.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -287,6 +296,7 @@ Useful documents:
 - [Testing and Validation Report](reports/testing_validation_report.md)
 - [JPEG2000 / CCSDS-Style Baseline Report](results/space_codec_baselines_500/space_codec_baseline_report.md)
 - [Model Improvement Step 1: Operating Point Analysis](results/model_improvement_step1_operating_points/operating_point_analysis_report.md)
+- [Model Improvement Step 2: Detail-Aware Token Scoring](results/model_improvement_step2_token_scoring/token_scoring_improvement_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
@@ -319,6 +329,7 @@ Known limitations:
 - Large datasets and checkpoints are not included in this public repo.
 - Real Jetson or flight-hardware deployment still needs further validation.
 - FIRMS and burned-area label alignment should be expanded.
+- Detail-aware token scoring has controlled component evidence and still needs full Sentinel-2 benchmark validation.
 
 ---
 
@@ -326,8 +337,7 @@ Known limitations:
 
 Next research steps:
 
-- expand Sentinel-2 wildfire validation to 500+ scenes
-- add JPEG2000 and CCSDS-style baselines
+- run full Sentinel-2 validation for the detail-aware selector
 - improve FIRMS and burn-scar label alignment
 - produce an arXiv preprint
 - add a short demo video

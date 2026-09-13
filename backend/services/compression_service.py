@@ -94,7 +94,13 @@ class CompressionService:
             semantic_analysis = self.semantic_service.analyze(original, token_shape, method=semantic_method)
             detector_output = self._detect_mission_utility(original, token_shape, mission)
             utility_map = np.maximum(semantic_analysis.importance_map, detector_output.utility_map)
-            keep_mask, token_scores = self.utility_pruner.select(tokens, utility_map, config.semantic_keep_ratio)
+            detail_map = self.semantic_service.detail_map(original, token_shape)
+            keep_mask, token_scores = self.utility_pruner.select(
+                tokens,
+                utility_map,
+                config.semantic_keep_ratio,
+                detail_map=detail_map,
+            )
             semantic_tokens = int(keep_mask.sum())
             pruned_tokens = self.token_service.prune_tokens(tokens, keep_mask)
             token_entropy = self.token_service.token_entropy_bits(pruned_tokens)

@@ -15,6 +15,7 @@ from metrics.semantic_utility import SemanticUtilityMetric
 from research.objective import ResearchObjective
 from semantic_ai.detector_base import MissionDetectorOutput
 from semantic_ai import FloodDetector, ShipDetector, WildfireDetector
+from backend.services.semantic_service import SemanticService
 from token_selection.utility_pruner import UtilityAwareTokenPruner
 from transmission.energy_model import EnergyModel
 
@@ -67,6 +68,33 @@ def test_utility_pruner_prefers_high_utility_token():
     assert keep.sum() == 4
     assert keep[3, 3]
     assert scores.shape == (4, 4)
+
+
+def test_utility_pruner_can_prioritize_structural_detail():
+    tokens = torch.zeros((1, 4, 4), dtype=torch.long)
+    utility = np.zeros((4, 4), dtype="float32")
+    detail = np.zeros((4, 4), dtype="float32")
+    detail[1, 2] = 1.0
+
+    keep, scores = UtilityAwareTokenPruner().select(tokens, utility, keep_ratio=0.0625, detail_map=detail)
+
+    assert keep.sum() == 1
+    assert keep[1, 2]
+    assert scores[1, 2] == scores.max()
+
+
+def test_semantic_service_detail_map_matches_token_shape():
+    image = Image.new("RGB", (32, 32), color=(20, 20, 20))
+    for x in range(16, 32):
+        for y in range(32):
+            image.putpixel((x, y), (220, 220, 220))
+
+    detail = SemanticService().detail_map(image, (4, 4))
+
+    assert detail.shape == (4, 4)
+    assert detail.min() >= 0
+    assert detail.max() <= 1
+    assert detail.sum() > 0
 
 
 def test_energy_and_objective_are_finite():

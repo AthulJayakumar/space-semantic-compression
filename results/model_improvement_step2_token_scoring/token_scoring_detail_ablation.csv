@@ -1,0 +1,9 @@
+method,keep_ratio,tokens_kept,utility_mass_retained_percent,boundary_tokens_retained,boundary_retention_percent,mean_selected_score
+utility_entropy_only,0.1,26,40.62,8,28.57,1.0
+detail_aware_utility,0.1,26,40.62,26,92.86,1.0
+utility_entropy_only,0.2,51,79.69,24,85.71,1.0
+detail_aware_utility,0.2,51,79.69,28,100.0,0.8797
+utility_entropy_only,0.3,77,100.0,28,100.0,0.8312
+detail_aware_utility,0.3,77,100.0,28,100.0,0.7065
+utility_entropy_only,0.4,102,100.0,28,100.0,0.6275
+detail_aware_utility,0.4,102,100.0,28,100.0,0.5333

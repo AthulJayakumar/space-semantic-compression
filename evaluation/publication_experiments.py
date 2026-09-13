@@ -84,12 +84,13 @@ class PublicationExperimentRunner:
 
     def ablation_study(self, image_paths: list[Path], mission: str) -> list[dict[str, object]]:
         variants = {
-            "full_system": TokenSelectionWeights(0.65, 0.20, 0.15),
-            "without_utility_map": TokenSelectionWeights(0.0, 0.80, 0.20),
-            "without_detector_confidence": TokenSelectionWeights(0.40, 0.40, 0.20),
-            "without_entropy": TokenSelectionWeights(0.85, 0.0, 0.15),
-            "without_energy_term": TokenSelectionWeights(0.70, 0.30, 0.0),
-            "without_adaptive_transmission": TokenSelectionWeights(0.65, 0.20, 0.15),
+            "full_system": TokenSelectionWeights(alpha_utility=0.55, beta_entropy=0.20, gamma_cost=0.05, delta_detail=0.20),
+            "without_utility_map": TokenSelectionWeights(alpha_utility=0.0, beta_entropy=0.65, gamma_cost=0.10, delta_detail=0.25),
+            "without_detector_confidence": TokenSelectionWeights(alpha_utility=0.40, beta_entropy=0.30, gamma_cost=0.10, delta_detail=0.20),
+            "without_entropy": TokenSelectionWeights(alpha_utility=0.70, beta_entropy=0.0, gamma_cost=0.10, delta_detail=0.20),
+            "without_detail_term": TokenSelectionWeights(alpha_utility=0.65, beta_entropy=0.25, gamma_cost=0.10, delta_detail=0.0),
+            "without_energy_term": TokenSelectionWeights(alpha_utility=0.55, beta_entropy=0.25, gamma_cost=0.0, delta_detail=0.20),
+            "without_adaptive_transmission": TokenSelectionWeights(alpha_utility=0.55, beta_entropy=0.20, gamma_cost=0.05, delta_detail=0.20),
         }
         original_pruner = self.service.utility_pruner
         rows: list[dict[str, object]] = []
@@ -272,7 +273,8 @@ class PublicationExperimentRunner:
             mask[order[:keep_count]] = True
             keep_mask = mask.reshape(shape)
         else:
-            keep_mask, _ = UtilityAwareTokenPruner(TokenSelectionWeights(0.0, 1.0, 0.0)).select(tokens, np.zeros(shape, dtype="float32"), keep_ratio)
+            entropy_only = TokenSelectionWeights(alpha_utility=0.0, beta_entropy=1.0, gamma_cost=0.0, delta_detail=0.0)
+            keep_mask, _ = UtilityAwareTokenPruner(entropy_only).select(tokens, np.zeros(shape, dtype="float32"), keep_ratio)
         pruned = self.service.token_service.prune_tokens(tokens, keep_mask)
         reconstruction = tensor_to_image(self.service.decoder_service.decode(pruned))
         detector_after = self.service._detect_mission_utility(reconstruction, shape, mission)
