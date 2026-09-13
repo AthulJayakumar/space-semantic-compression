@@ -18,7 +18,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -26,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from backend.services.factory import get_compression_service
 from backend.utils.tensor_utils import image_to_tensor, tensor_to_image
+from datasets.research_wildfire import load_rgb_image, looks_like_mask
 from token_selection.learned_mode_selector import (
     ModeConditionedSelectorConfig,
     ModeConditionedTokenScorer,
@@ -143,7 +143,7 @@ def evaluate_image(
     skip_lpips: bool,
 ) -> list[dict[str, object]]:
     image_bytes = image_path.read_bytes()
-    original = Image.open(image_path).convert("RGB")
+    original = load_rgb_image(image_path)
     tensor = image_to_tensor(original, service.encoder_service.device, service.encoder_service.stride)
     tokens = service.encoder_service.encode(tensor)
     token_shape = tuple(tokens.shape[-2:])
@@ -267,8 +267,11 @@ def validation_images(dataset_dir: Path, validation_fraction: float, seed: int, 
             *dataset_dir.rglob("*.jpg"),
             *dataset_dir.rglob("*.jpeg"),
             *dataset_dir.rglob("*.webp"),
+            *dataset_dir.rglob("*.tif"),
+            *dataset_dir.rglob("*.tiff"),
         ]
     )
+    images = [path for path in images if not looks_like_mask(path)]
     if len(images) < 2:
         return images
     fraction = float(np.clip(validation_fraction, 0.0, 0.8))

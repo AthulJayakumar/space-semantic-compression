@@ -1,0 +1,5 @@
+# Optional dependencies for downloading and preparing external research datasets.
+# The core API/demo can run from requirements.txt without these extras.
+huggingface_hub>=0.25.0
+datasets>=3.0.0
+pandas>=2.0.0

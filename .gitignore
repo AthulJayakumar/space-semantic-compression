@@ -23,6 +23,7 @@ datasets/**/labels/
 datasets/**/metadata/
 datasets/**/_source_repo/
 datasets/**/_hf_parts/
+datasets/research_wildfire/
 datasets/**/*.tif
 datasets/**/*.tiff
 datasets/**/*.tar.gz

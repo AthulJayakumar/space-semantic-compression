@@ -108,6 +108,26 @@ Model improvement Step 7 trained that learned selector on **100 Sentinel-2 patch
 
 Model improvement Step 8 scaled training to **1,500 real Sentinel-2/CEMS-derived patches** with a reproducible 80/20 train/validation split. The learned selector trained on 1,200 patches and validated on 300 held-out patches. Final train loss was **0.002844** and final validation loss was **0.003845**.
 
+Model improvement Step 9 adds the route for true mask-supervised model improvement. The repository now supports research wildfire datasets such as **CEMS-HLS**, **HLS Burn Scars**, **FireScope-Bench**, and **EO4WildFires** through a reproducible download/manifest script. This is the recommended path for improving the AI selector because it trains token priorities from real wildfire/burn-scar masks rather than only from hand-designed utility heuristics.
+
+To preview the dataset plan:
+
+```bash
+python scripts/download_research_wildfire_datasets.py --datasets cems_hls hls_burn_scars --profile small
+```
+
+To download the controlled small profile and build the training manifest:
+
+```bash
+python scripts/download_research_wildfire_datasets.py --datasets cems_hls hls_burn_scars --profile small --execute
+```
+
+To train the mask-supervised selector after data preparation:
+
+```bash
+python scripts/train_mask_supervised_token_selector.py --manifest datasets/research_wildfire/wildfire_research_manifest.csv --epochs 8
+```
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
