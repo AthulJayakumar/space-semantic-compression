@@ -132,7 +132,24 @@ Interpretation:
 - These results strengthen ESA/DLR-facing positioning by adding conventional space-compression references.
 - The results also reinforce the honest conclusion that conventional codecs remain strong for detector retention and image quality.
 
-## 10. Main Supported Research Claims
+## 10. Model Improvement Step 1: Operating Point Analysis
+
+The first model-improvement step was completed without changing the architecture. The objective was to identify whether the current utility-aware model performs better at a less aggressive token-retention point.
+
+| Utility-Aware Retention | SUS | Detector Retention | Compression Ratio | Bandwidth Saved |
+|---:|---:|---:|---:|---:|
+| 50% | 82.54 | 0.783 | 145.36x | 99.31% |
+| **80% recommended** | **90.49** | **0.907** | **107.77x** | **99.07%** |
+| 100% full VQ-VAE | 92.81 | 0.947 | 99.08x | 98.98% |
+
+Interpretation:
+
+- The earlier 45-50% headline setting was too aggressive for detector retention.
+- 80% retention is a stronger practical operating point.
+- It preserves most of the utility of full VQ-VAE while retaining over 100x compression.
+- This should become the main model setting for supervisor/demo presentation unless the goal is specifically stress-testing extreme compression.
+
+## 11. Main Supported Research Claims
 
 Based on the tests and included validation tables, the following claims are currently supported:
 
@@ -144,7 +161,7 @@ Based on the tests and included validation tables, the following claims are curr
 6. JPEG remains a strong baseline and should be treated honestly in publications.
 7. The strongest research framing is mission-utility preservation under extreme satellite communication constraints.
 
-## 11. Current Limitations
+## 12. Current Limitations
 
 The following limitations should be stated clearly in supervisor outreach and papers:
 
@@ -155,18 +172,19 @@ The following limitations should be stated clearly in supervisor outreach and pa
 - Real Jetson or flight-like hardware testing is still future work.
 - FLAME sample size is small, so FLAME results should be treated as preliminary.
 
-## 12. Recommended Next Validation Steps
+## 13. Recommended Next Validation Steps
 
 Priority order:
 
 1. Add a small permissively licensed sample image and a lightweight demo mode.
 2. Add a GitHub Actions workflow for unit tests.
-3. Integrate a certified CCSDS 122/123 codec if available.
-4. Expand Sentinel-2 benchmark from 500 patches to 500+ independent georeferenced scenes.
-5. Add FIRMS and burn-scar label alignment details.
-6. Run edge benchmarks on real Jetson-class hardware if available.
-7. Record a 2-3 minute demo video for supervisors and job applications.
+3. Improve token scoring with edge/detail preservation.
+4. Integrate a certified CCSDS 122/123 codec if available.
+5. Expand Sentinel-2 benchmark from 500 patches to 500+ independent georeferenced scenes.
+6. Add FIRMS and burn-scar label alignment details.
+7. Run edge benchmarks on real Jetson-class hardware if available.
+8. Record a 2-3 minute demo video for supervisors and job applications.
 
-## 13. Conclusion
+## 14. Conclusion
 
-The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. The new JPEG2000 and CCSDS-style 500-patch baselines improve space-agency relevance. For peer-reviewed publication, the next important step is broader benchmark reproduction with independent georeferenced scenes, a certified CCSDS codec, and hardware validation.
+The repository is now clean enough for public review and passes core software checks. The included evidence is sufficient for PhD supervisor outreach and a preliminary research portfolio. The new JPEG2000 and CCSDS-style 500-patch baselines improve space-agency relevance, and the 80% operating-point analysis improves the current model presentation without requiring an architecture rewrite. For peer-reviewed publication, the next important step is broader benchmark reproduction with independent georeferenced scenes, a certified CCSDS codec, improved token scoring, and hardware validation.

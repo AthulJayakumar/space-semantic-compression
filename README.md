@@ -63,6 +63,16 @@ Additional 500-patch Sentinel-2 conventional codec validation:
 
 The CCSDS-style result is a transform-coding proxy, **not** a certified CCSDS implementation.
 
+Model improvement Step 1 identified a better operating point for the current utility-aware model:
+
+| Utility-Aware Retention | SUS | Detector Retention | Bandwidth Saved | Compression Ratio |
+|---:|---:|---:|---:|---:|
+| 50% | 82.54 | 0.783 | 99.31% | 145.36x |
+| **80% recommended** | **90.49** | **0.907** | **99.07%** | **107.77x** |
+| 100% full VQ-VAE | 92.81 | 0.947 | 98.98% | 99.08x |
+
+This improves the research story: 80% retention preserves most of the semantic utility of full VQ-VAE while keeping stronger compression than the full-token setting.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -276,6 +286,7 @@ Useful documents:
 - [Experiment Results Report](reports/experiment_results_2000_word_report.md)
 - [Testing and Validation Report](reports/testing_validation_report.md)
 - [JPEG2000 / CCSDS-Style Baseline Report](results/space_codec_baselines_500/space_codec_baseline_report.md)
+- [Model Improvement Step 1: Operating Point Analysis](results/model_improvement_step1_operating_points/operating_point_analysis_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
