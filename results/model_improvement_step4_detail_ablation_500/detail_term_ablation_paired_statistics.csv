@@ -1,0 +1,8 @@
+bootstrap_ci_high,bootstrap_ci_low,cohens_d,comparison,interpretation,keep_ratio,mean_difference,metric,n,paired_t_p,wilcoxon_p
+-0.106112,-0.518983,-0.13291,full_detail_aware_vs_without_detail_term,Detail-aware is lower,0.8,-0.317606,semantic_utility_score,500,0.00310191,0.00906137
+-0.000284,-0.005171,-0.095879,full_detail_aware_vs_without_detail_term,Detail-aware is lower,0.8,-0.002748,detector_retention,500,0.03252116,0.0286256
+-0.046786,-0.128786,-0.182172,full_detail_aware_vs_without_detail_term,Detail-aware is lower,0.8,-0.083784,compression_ratio,500,5.386e-05,1.526e-05
+-0.00014,-0.001041,-0.111378,full_detail_aware_vs_without_detail_term,Detail-aware is lower,0.8,-0.00058,bandwidth_saved_percent,500,0.01308072,0.05960218
+0.0888,0.049158,0.308979,full_detail_aware_vs_without_detail_term,Detail-aware is higher,0.8,0.068236,psnr,500,0.0,0.0
+0.004008,0.002628,0.42007,full_detail_aware_vs_without_detail_term,Detail-aware is higher,0.8,0.003287,ssim,500,0.0,0.0
+-0.001099,-0.001562,-0.506791,full_detail_aware_vs_without_detail_term,Detail-aware is lower; lower LPIPS is usually better,0.8,-0.001326,lpips,500,0.0,0.0

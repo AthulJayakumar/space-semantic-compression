@@ -299,7 +299,7 @@ def write_report(
 ) -> Path:
     path = output_dir / "detail_term_ablation_report.md"
     lines = [
-        "# Model Improvement Step 3: Sentinel-2 Detail-Term Ablation",
+        "# Sentinel-2 Detail-Term Ablation",
         "",
         "## Purpose",
         "This experiment tests whether the detail-aware token selector improves real Sentinel-2 wildfire patch results compared with an ablated selector that removes the structural detail term.",

@@ -91,6 +91,15 @@ Model improvement Step 3 ran that dataset-level check on 100 Sentinel-2 patches 
 
 Interpretation: the detail term gives a small but statistically significant improvement in reconstruction quality (PSNR, SSIM, LPIPS) while leaving SUS and detector retention broadly unchanged. This is useful, bounded evidence: detail-aware scoring helps visual/structural preservation, but does not yet create a large wildfire-utility jump.
 
+Model improvement Step 4 scaled the same ablation to **500 Sentinel-2 patches**:
+
+| 80% Retention Variant | Images | SUS | Detector Retention | PSNR | SSIM | LPIPS |
+|---|---:|---:|---:|---:|---:|---:|
+| Without detail term | 500 | 89.29 | 0.904 | 20.06 | 0.800 | 0.6020 |
+| Detail-aware scoring | 500 | 88.97 | 0.901 | 20.13 | 0.803 | 0.6007 |
+
+Interpretation: the 500-patch result confirms the trade-off. Detail-aware scoring improves PSNR, SSIM, and LPIPS, but slightly reduces SUS and detector retention. For the primary wildfire semantic-utility objective, the no-detail selector is currently stronger. Detail-aware scoring should be treated as an optional reconstruction-balanced mode rather than the default mission-utility mode.
+
 Important honesty note:
 
 > JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
@@ -307,6 +316,7 @@ Useful documents:
 - [Model Improvement Step 1: Operating Point Analysis](results/model_improvement_step1_operating_points/operating_point_analysis_report.md)
 - [Model Improvement Step 2: Detail-Aware Token Scoring](results/model_improvement_step2_token_scoring/token_scoring_improvement_report.md)
 - [Model Improvement Step 3: Sentinel-2 Detail-Term Ablation](results/model_improvement_step3_detail_ablation/detail_term_ablation_report.md)
+- [Model Improvement Step 4: 500-Patch Detail-Term Ablation](results/model_improvement_step4_detail_ablation_500/detail_term_ablation_report.md)
 - [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
 - [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
 - [Code Walkthrough](docs/code_walkthrough.md)
@@ -339,7 +349,7 @@ Known limitations:
 - Large datasets and checkpoints are not included in this public repo.
 - Real Jetson or flight-hardware deployment still needs further validation.
 - FIRMS and burned-area label alignment should be expanded.
-- Detail-aware token scoring improves reconstruction metrics modestly, but does not yet materially improve SUS or detector retention.
+- Detail-aware token scoring improves reconstruction metrics modestly, but slightly reduces SUS and detector retention on the 500-patch Sentinel-2 ablation.
 
 ---
 
@@ -347,7 +357,7 @@ Known limitations:
 
 Next research steps:
 
-- scale the detail-term ablation from 100 to 500 Sentinel-2 patches
+- make the no-detail selector the mission-utility default and keep detail-aware scoring as an optional reconstruction-balanced mode
 - improve FIRMS and burn-scar label alignment
 - produce an arXiv preprint
 - add a short demo video
