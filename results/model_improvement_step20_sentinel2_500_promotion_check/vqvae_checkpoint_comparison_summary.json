@@ -1,0 +1,40 @@
+[
+  {
+    "dataset": "sentinel2_patches",
+    "checkpoint": "mixed_regularized",
+    "n_images": 500,
+    "semantic_utility_score_mean": 81.15921684029259,
+    "semantic_utility_score_std": 14.45534601380405,
+    "detector_retention_mean": 0.8402984213680029,
+    "detector_retention_std": 0.17882994733037766,
+    "psnr_mean": 22.63125987960227,
+    "psnr_std": 4.533261871436147,
+    "ssim_mean": 0.8354251607528097,
+    "ssim_std": 0.11095483511856519,
+    "compression_ratio_mean": 68.59547394895812,
+    "compression_ratio_std": 5.100393299218647,
+    "bandwidth_saved_percent_mean": 98.53427541123051,
+    "bandwidth_saved_percent_std": 0.1071727355465168,
+    "inference_latency_ms_mean": 131.88331879979523,
+    "inference_latency_ms_std": 24.556409443893035
+  },
+  {
+    "dataset": "sentinel2_patches",
+    "checkpoint": "original",
+    "n_images": 500,
+    "semantic_utility_score_mean": 80.46972028650501,
+    "semantic_utility_score_std": 14.434024346789569,
+    "detector_retention_mean": 0.8641930223572999,
+    "detector_retention_std": 0.17234365096070822,
+    "psnr_mean": 21.305112693770855,
+    "psnr_std": 3.8357036791620107,
+    "ssim_mean": 0.817025793803711,
+    "ssim_std": 0.11648888377751941,
+    "compression_ratio_mean": 69.76079153123534,
+    "compression_ratio_std": 5.166395928347302,
+    "bandwidth_saved_percent_mean": 98.55878589438782,
+    "bandwidth_saved_percent_std": 0.10540087119722287,
+    "inference_latency_ms_mean": 141.25473060006334,
+    "inference_latency_ms_std": 72.44877372960842
+  }
+]
