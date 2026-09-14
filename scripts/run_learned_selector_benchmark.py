@@ -104,7 +104,20 @@ def build_selectors(checkpoint_args: list[str], hybrid_weights: list[float] | No
             if "=" not in item:
                 raise ValueError("--checkpoint must use NAME=PATH format")
             name, raw_path = item.split("=", 1)
-            selectors.append(SelectorSpec(name=name.strip(), kind="learned", checkpoint_path=Path(raw_path.strip())))
+            clean_name = name.strip()
+            checkpoint_path = Path(raw_path.strip())
+            selectors.append(SelectorSpec(name=clean_name, kind="learned", checkpoint_path=checkpoint_path))
+            for weight in hybrid_weights or []:
+                fixed_weight = 1.0 - weight
+                hybrid_name = f"hybrid_fixed_{fixed_weight:.2f}_{clean_name}_{weight:.2f}".replace(".", "p")
+                selectors.append(
+                    SelectorSpec(
+                        name=hybrid_name,
+                        kind="hybrid",
+                        checkpoint_path=checkpoint_path,
+                        learned_weight=weight,
+                    )
+                )
         return selectors
 
     defaults = [
