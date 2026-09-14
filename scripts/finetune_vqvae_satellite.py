@@ -26,15 +26,15 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from backend.utils.tensor_utils import resolve_device  # noqa: E402
-from datasets.research_wildfire import ManifestRow, load_rgb_image, read_manifest  # noqa: E402
+from datasets.research_wildfire import ManifestRow, load_rgb_image, looks_like_mask, read_manifest  # noqa: E402
 from src.models.vqvae import VQVAE  # noqa: E402
 
 
-class ManifestImageDataset(Dataset):
-    """Image-only dataset backed by a wildfire image/mask manifest."""
+class ImagePathDataset(Dataset):
+    """Image-only dataset backed by local image paths."""
 
-    def __init__(self, rows: list[ManifestRow], image_size: int) -> None:
-        self.rows = rows
+    def __init__(self, image_paths: list[Path], image_size: int) -> None:
+        self.image_paths = image_paths
         self.image_size = image_size
         self.transform = T.Compose(
             [
@@ -45,10 +45,10 @@ class ManifestImageDataset(Dataset):
         )
 
     def __len__(self) -> int:
-        return len(self.rows)
+        return len(self.image_paths)
 
     def __getitem__(self, index: int) -> torch.Tensor:
-        image = load_rgb_image(Path(self.rows[index].image_path)).convert("RGB")
+        image = load_rgb_image(self.image_paths[index]).convert("RGB")
         return self.transform(image)
 
 
@@ -58,6 +58,13 @@ def main() -> None:
     parser.add_argument("--base-checkpoint", type=Path, default=Path("../checkpoints/vqvae_s16k8.pt"))
     parser.add_argument("--output", type=Path, default=Path("models/checkpoints/vqvae_s16k8_cems_hls_finetuned.pt"))
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--extra-image-dir",
+        action="append",
+        default=[],
+        help="Additional image directory for mixed-domain fine-tuning. May be passed multiple times.",
+    )
+    parser.add_argument("--extra-limit", type=int, default=None, help="Optional cap per extra image directory.")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--image-size", type=int, default=256)
@@ -77,6 +84,14 @@ def main() -> None:
     if args.limit:
         rows = rows[: args.limit]
     train_rows, validation_rows = split_rows(rows, args.validation_fraction, args.seed)
+    extra_train_paths, extra_validation_paths = split_extra_images(
+        [Path(path) for path in args.extra_image_dir],
+        args.extra_limit,
+        args.validation_fraction,
+        args.seed,
+    )
+    train_paths = [Path(row.image_path) for row in train_rows] + extra_train_paths
+    validation_paths = [Path(row.image_path) for row in validation_rows] + extra_validation_paths
     if not train_rows or not validation_rows:
         raise ValueError("Fine-tuning requires at least one training row and one validation row.")
 
@@ -85,14 +100,14 @@ def main() -> None:
         freeze_codebook(model)
 
     train_loader = DataLoader(
-        ManifestImageDataset(train_rows, args.image_size),
+        ImagePathDataset(train_paths, args.image_size),
         batch_size=args.batch,
         shuffle=True,
         num_workers=0,
         pin_memory=False,
     )
     validation_loader = DataLoader(
-        ManifestImageDataset(validation_rows, args.image_size),
+        ImagePathDataset(validation_paths, args.image_size),
         batch_size=args.batch,
         shuffle=False,
         num_workers=0,
@@ -117,6 +132,8 @@ def main() -> None:
             "validation_psnr": validation_metrics["psnr"],
             "train_samples": len(train_rows),
             "validation_samples": len(validation_rows),
+            "extra_train_samples": len(extra_train_paths),
+            "extra_validation_samples": len(extra_validation_paths),
         }
         log_rows.append(row)
         print(
@@ -148,6 +165,10 @@ def main() -> None:
                 "seed": args.seed,
                 "train_samples": len(train_rows),
                 "validation_samples": len(validation_rows),
+                "extra_image_dirs": [str(path) for path in args.extra_image_dir],
+                "extra_limit": args.extra_limit,
+                "extra_train_samples": len(extra_train_paths),
+                "extra_validation_samples": len(extra_validation_paths),
                 "freeze_codebook": args.freeze_codebook,
                 "best_validation_loss": best_validation_loss,
             },
@@ -155,7 +176,7 @@ def main() -> None:
         args.output,
     )
     write_csv(args.output.with_suffix(".csv"), log_rows)
-    write_report(args.output.with_suffix(".md"), args, log_rows, len(train_rows), len(validation_rows))
+    write_report(args.output.with_suffix(".md"), args, log_rows, len(train_paths), len(validation_paths))
     print(args.output)
 
 
@@ -236,6 +257,51 @@ def split_rows(rows: list[ManifestRow], validation_fraction: float, seed: int) -
     train_rows = [row for index, row in enumerate(rows) if index not in validation_indices]
     validation_rows = [row for index, row in enumerate(rows) if index in validation_indices]
     return train_rows, validation_rows
+
+
+def split_extra_images(
+    image_dirs: list[Path],
+    limit: int | None,
+    validation_fraction: float,
+    seed: int,
+) -> tuple[list[Path], list[Path]]:
+    train_paths: list[Path] = []
+    validation_paths: list[Path] = []
+    for index, image_dir in enumerate(image_dirs):
+        paths = discover_images(image_dir, limit)
+        train, validation = split_paths(paths, validation_fraction, seed + index + 1)
+        train_paths.extend(train)
+        validation_paths.extend(validation)
+    return train_paths, validation_paths
+
+
+def discover_images(image_dir: Path, limit: int | None) -> list[Path]:
+    images = sorted(
+        [
+            *image_dir.rglob("*.png"),
+            *image_dir.rglob("*.jpg"),
+            *image_dir.rglob("*.jpeg"),
+            *image_dir.rglob("*.webp"),
+            *image_dir.rglob("*.tif"),
+            *image_dir.rglob("*.tiff"),
+        ]
+    )
+    images = [path for path in images if not looks_like_mask(path)]
+    return images[:limit] if limit else images
+
+
+def split_paths(paths: list[Path], validation_fraction: float, seed: int) -> tuple[list[Path], list[Path]]:
+    if not paths:
+        return [], []
+    fraction = float(np.clip(validation_fraction, 0.05, 0.8))
+    rng = np.random.default_rng(seed)
+    indices = np.arange(len(paths))
+    rng.shuffle(indices)
+    validation_count = max(1, int(round(len(paths) * fraction)))
+    validation_indices = set(indices[:validation_count].tolist())
+    train_paths = [path for index, path in enumerate(paths) if index not in validation_indices]
+    validation_paths = [path for index, path in enumerate(paths) if index in validation_indices]
+    return train_paths, validation_paths
 
 
 def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
