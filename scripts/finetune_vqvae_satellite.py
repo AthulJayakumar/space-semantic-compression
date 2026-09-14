@@ -70,6 +70,18 @@ def main() -> None:
     parser.add_argument("--image-size", type=int, default=256)
     parser.add_argument("--learning-rate", type=float, default=5e-5)
     parser.add_argument("--commit-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--teacher-checkpoint",
+        type=Path,
+        default=None,
+        help="Optional frozen reference checkpoint used for original-model consistency regularization.",
+    )
+    parser.add_argument(
+        "--teacher-consistency-weight",
+        type=float,
+        default=0.0,
+        help="Weight for preserving the original checkpoint reconstruction behavior.",
+    )
     parser.add_argument("--validation-fraction", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--device", default="auto")
@@ -92,10 +104,17 @@ def main() -> None:
     )
     train_paths = [Path(row.image_path) for row in train_rows] + extra_train_paths
     validation_paths = [Path(row.image_path) for row in validation_rows] + extra_validation_paths
-    if not train_rows or not validation_rows:
-        raise ValueError("Fine-tuning requires at least one training row and one validation row.")
+    if not train_paths or not validation_paths:
+        raise ValueError("Fine-tuning requires at least one training image and one validation image.")
 
     model, checkpoint_args = load_model(args.base_checkpoint, device)
+    teacher_model = None
+    if args.teacher_consistency_weight > 0:
+        teacher_path = args.teacher_checkpoint or args.base_checkpoint
+        teacher_model, _ = load_model(teacher_path, device)
+        teacher_model.eval()
+        for parameter in teacher_model.parameters():
+            parameter.requires_grad = False
     if args.freeze_codebook:
         freeze_codebook(model)
 
@@ -120,14 +139,36 @@ def main() -> None:
     best_state = None
 
     for epoch in range(1, args.epochs + 1):
-        train_metrics = run_epoch(model, train_loader, device, args.commit_weight, optimizer, train=True, freeze_codebook=args.freeze_codebook)
-        validation_metrics = run_epoch(model, validation_loader, device, args.commit_weight, optimizer, train=False, freeze_codebook=args.freeze_codebook)
+        train_metrics = run_epoch(
+            model,
+            train_loader,
+            device,
+            args.commit_weight,
+            optimizer,
+            train=True,
+            freeze_codebook=args.freeze_codebook,
+            teacher_model=teacher_model,
+            teacher_consistency_weight=args.teacher_consistency_weight,
+        )
+        validation_metrics = run_epoch(
+            model,
+            validation_loader,
+            device,
+            args.commit_weight,
+            optimizer,
+            train=False,
+            freeze_codebook=args.freeze_codebook,
+            teacher_model=teacher_model,
+            teacher_consistency_weight=args.teacher_consistency_weight,
+        )
         row = {
             "epoch": epoch,
             "train_loss": train_metrics["loss"],
             "validation_loss": validation_metrics["loss"],
             "train_reconstruction_loss": train_metrics["reconstruction_loss"],
             "validation_reconstruction_loss": validation_metrics["reconstruction_loss"],
+            "train_teacher_consistency_loss": train_metrics["teacher_consistency_loss"],
+            "validation_teacher_consistency_loss": validation_metrics["teacher_consistency_loss"],
             "train_psnr": train_metrics["psnr"],
             "validation_psnr": validation_metrics["psnr"],
             "train_samples": len(train_rows),
@@ -161,6 +202,8 @@ def main() -> None:
                 "image_size": args.image_size,
                 "learning_rate": args.learning_rate,
                 "commit_weight": args.commit_weight,
+                "teacher_checkpoint": str(args.teacher_checkpoint or ""),
+                "teacher_consistency_weight": args.teacher_consistency_weight,
                 "validation_fraction": args.validation_fraction,
                 "seed": args.seed,
                 "train_samples": len(train_rows),
@@ -183,7 +226,7 @@ def main() -> None:
 def load_model(checkpoint_path: Path, device: torch.device) -> tuple[VQVAE, dict[str, object]]:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = load_checkpoint(checkpoint_path)
     checkpoint_args = dict(checkpoint.get("args", {}))
     model_args = {
         "codebook_size": int(checkpoint_args.get("codes", 8192)),
@@ -193,6 +236,13 @@ def load_model(checkpoint_path: Path, device: torch.device) -> tuple[VQVAE, dict
     model = VQVAE(**model_args).to(device)
     model.load_state_dict(checkpoint["model"])
     return model, checkpoint_args
+
+
+def load_checkpoint(checkpoint_path: Path) -> dict[str, object]:
+    try:
+        return torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    except TypeError:
+        return torch.load(checkpoint_path, map_location="cpu")
 
 
 def freeze_codebook(model: VQVAE) -> None:
@@ -208,12 +258,15 @@ def run_epoch(
     optimizer: torch.optim.Optimizer,
     train: bool,
     freeze_codebook: bool,
+    teacher_model: VQVAE | None = None,
+    teacher_consistency_weight: float = 0.0,
 ) -> dict[str, float]:
     model.train(train)
     if train and freeze_codebook:
         model.vq.eval()
     losses: list[float] = []
     reconstruction_losses: list[float] = []
+    teacher_losses: list[float] = []
     psnr_values: list[float] = []
     context = torch.enable_grad() if train else torch.no_grad()
     with context:
@@ -225,17 +278,26 @@ def run_epoch(
             l1 = F.l1_loss(reconstruction, batch)
             mse = F.mse_loss(reconstruction, batch)
             reconstruction_loss = l1 + 0.25 * mse
-            loss = reconstruction_loss + commit_weight * commit
+            teacher_loss = torch.zeros((), device=device)
+            if teacher_model is not None and teacher_consistency_weight > 0:
+                with torch.no_grad():
+                    teacher_reconstruction, _, _ = teacher_model(batch)
+                teacher_l1 = F.l1_loss(reconstruction, teacher_reconstruction)
+                teacher_mse = F.mse_loss(reconstruction, teacher_reconstruction)
+                teacher_loss = teacher_l1 + 0.25 * teacher_mse
+            loss = reconstruction_loss + commit_weight * commit + teacher_consistency_weight * teacher_loss
             if train:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
             losses.append(float(loss.detach().cpu()))
             reconstruction_losses.append(float(reconstruction_loss.detach().cpu()))
+            teacher_losses.append(float(teacher_loss.detach().cpu()))
             psnr_values.append(psnr_from_normalized_mse(float(mse.detach().cpu())))
     return {
         "loss": float(np.mean(losses)) if losses else 0.0,
         "reconstruction_loss": float(np.mean(reconstruction_losses)) if reconstruction_losses else 0.0,
+        "teacher_consistency_loss": float(np.mean(teacher_losses)) if teacher_losses else 0.0,
         "psnr": float(np.mean(psnr_values)) if psnr_values else 0.0,
     }
 
@@ -335,6 +397,8 @@ def write_report(path: Path, args: argparse.Namespace, rows: list[dict[str, obje
                 f"- Image size: {args.image_size}",
                 f"- Learning rate: {args.learning_rate}",
                 f"- Codebook frozen: {args.freeze_codebook}",
+                f"- Teacher checkpoint: `{args.teacher_checkpoint or ''}`",
+                f"- Teacher consistency weight: {args.teacher_consistency_weight}",
                 "",
                 "## Result",
                 f"- Final validation loss: {final_row.get('validation_loss', 'n/a')}",
