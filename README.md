@@ -136,6 +136,10 @@ Important honesty note:
 
 ## 4. How The System Works
 
+Visual architecture and result diagrams are available in:
+
+[CompressAI Visual Diagram Pack](docs/diagrams/visual_diagram_pack.md)
+
 ```text
 Sentinel-2 / Wildfire Image
         ↓
