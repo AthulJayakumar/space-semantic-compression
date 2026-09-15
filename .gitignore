@@ -38,6 +38,9 @@ results/**/raw/
 results/**/intermediate/
 results/space_codec_baselines_smoke/
 
+# Private IP / visa working material
+career_evidence_pack/private/
+
 # OS/editor files
 .DS_Store
 Thumbs.db
