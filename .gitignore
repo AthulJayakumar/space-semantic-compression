@@ -38,6 +38,8 @@ models/checkpoints/*
 !models/checkpoints/README.md
 
 # Experiment bulk outputs
+# Result files are local by default. Curated reports are added explicitly.
+results/**
 results/**/raw/
 results/**/intermediate/
 results/space_codec_baselines_smoke/
