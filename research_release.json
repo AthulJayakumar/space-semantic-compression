@@ -1,0 +1,23 @@
+{
+  "project": "space-semantic-compression",
+  "version": "0.2.0",
+  "released_on": "2026-09-24",
+  "model": {
+    "id": "vqvae-ecofirebias-adapted-2026-09",
+    "status": "experimental_no_go_for_sealed_test",
+    "path": "models/checkpoints/vqvae_ecofirebias_train_adapted.pt",
+    "size_bytes": 28890327,
+    "sha256": "668cf5bda5c69b196d70306dbc6ed576c2675d372ffcfe2605e53a40286011f6",
+    "codebook_size": 8192,
+    "code_dimension": 256,
+    "stride": 16
+  },
+  "principal_evidence": {
+    "report": "results/future_satellite_cohort_audit/ecofirebias_official_validation/VALIDATION_REPORT.json",
+    "event_pairs": 60,
+    "images": 120,
+    "maximum_serialized_bytes": 1200,
+    "sealed_test_scored": false
+  },
+  "proposal": "reports/phd_proposal_submission_2026.md"
+}

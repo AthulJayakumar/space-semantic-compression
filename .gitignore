@@ -24,6 +24,10 @@ datasets/**/metadata/
 datasets/**/_source_repo/
 datasets/**/_hf_parts/
 datasets/research_wildfire/
+datasets/external_lockbox/
+datasets/impactmesh_fire_v1/
+datasets/wildfire_global_v1/
+datasets/floga_metadata/
 datasets/**/*.tif
 datasets/**/*.tiff
 datasets/**/*.tar.gz
@@ -37,6 +41,8 @@ models/checkpoints/*
 results/**/raw/
 results/**/intermediate/
 results/space_codec_baselines_smoke/
+results/**/*_samples.pt
+tmp/
 
 # Private IP / visa working material
 career_evidence_pack/private/

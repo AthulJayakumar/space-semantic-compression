@@ -1,3 +1,5 @@
+> **Superseded application draft (September 2026).** Some preliminary-result and independence claims below predate the frozen EcoFireBias comparison. Use [the current submission proposal](phd_proposal_submission_2026.md) instead; do not circulate this older version as current evidence.
+
 # Semantic Utility-Aware Adaptive Communication for Wildfire-Centric Earth Observation Systems Under Resource Constraints
 
 **PhD Research Proposal**

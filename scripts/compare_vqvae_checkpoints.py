@@ -32,6 +32,7 @@ from backend.services.transmission_service import SatelliteTransmissionService  
 from backend.services.visualization_service import VisualizationService  # noqa: E402
 from backend.utils.tensor_utils import image_to_tensor, tensor_to_image  # noqa: E402
 from datasets.research_wildfire import load_rgb_image, looks_like_mask  # noqa: E402
+from semantic_ai import WildfireDetector  # noqa: E402
 from token_selection.utility_pruner import TokenSelectionWeights, UtilityAwareTokenPruner  # noqa: E402
 
 
@@ -63,8 +64,19 @@ def main() -> None:
     )
     parser.add_argument("--output-dir", type=Path, default=Path("results/model_improvement_step17_cross_dataset_vqvae_check"))
     parser.add_argument("--limit", type=int, default=80)
+    parser.add_argument(
+        "--manifest-split",
+        default="test",
+        help="Split selected when a --dataset path is a CSV manifest.",
+    )
     parser.add_argument("--keep-ratio", type=float, default=0.8)
     parser.add_argument("--mission", default="wildfire_detection")
+    parser.add_argument(
+        "--detector-checkpoint",
+        type=Path,
+        default=Path("models/checkpoints/wildfire_utility_segmentation.pt"),
+        help="Wildfire detector used for utility ranking and SUS. Default preserves historical runs.",
+    )
     parser.add_argument("--device", default="auto")
     parser.add_argument("--skip-lpips", action="store_true")
     args = parser.parse_args()
@@ -72,12 +84,20 @@ def main() -> None:
     checkpoints = parse_checkpoints(args.checkpoint)
     datasets = parse_datasets(args.dataset)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    services = {spec.name: build_service(spec.path, args.device, args.output_dir / "outputs" / spec.name) for spec in checkpoints}
+    services = {
+        spec.name: build_service(
+            spec.path,
+            args.device,
+            args.output_dir / "outputs" / spec.name,
+            args.detector_checkpoint,
+        )
+        for spec in checkpoints
+    }
     pruner = UtilityAwareTokenPruner(TokenSelectionWeights.mission_utility())
 
     rows: list[dict[str, object]] = []
     for dataset in datasets:
-        image_paths = discover_images(dataset.path, args.limit)
+        image_paths = discover_images(dataset.path, args.limit, manifest_split=args.manifest_split)
         if not image_paths:
             print(f"warning: no images found for {dataset.name} at {dataset.path}")
             continue
@@ -153,10 +173,15 @@ def evaluate_image(
     }
 
 
-def build_service(checkpoint_path: Path, device: str, output_dir: Path) -> CompressionService:
+def build_service(
+    checkpoint_path: Path,
+    device: str,
+    output_dir: Path,
+    detector_checkpoint: Path = Path("models/checkpoints/wildfire_utility_segmentation.pt"),
+) -> CompressionService:
     encoder = EncoderService(checkpoint_path, device)
     decoder = DecoderService(encoder)
-    return CompressionService(
+    service = CompressionService(
         encoder_service=encoder,
         decoder_service=decoder,
         metrics_service=MetricsService(),
@@ -166,9 +191,25 @@ def build_service(checkpoint_path: Path, device: str, output_dir: Path) -> Compr
         visualization_service=VisualizationService(output_dir),
         output_dir=output_dir,
     )
+    service.detectors["wildfire_detection"] = WildfireDetector(
+        detector_checkpoint, output_dir=None, save_visualizations=False
+    )
+    return service
 
 
-def discover_images(dataset_dir: Path, limit: int | None) -> list[Path]:
+def discover_images(
+    dataset_dir: Path, limit: int | None, manifest_split: str = "test"
+) -> list[Path]:
+    if dataset_dir.is_file() and dataset_dir.suffix.lower() == ".csv":
+        with dataset_dir.open("r", newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        images = [
+            Path(row["image_path"])
+            for row in rows
+            if not manifest_split or row.get("split", "") == manifest_split
+        ]
+        images = [path for path in images if path.exists()]
+        return images[:limit] if limit else images
     images = sorted(
         [
             *dataset_dir.rglob("*.png"),
@@ -210,7 +251,15 @@ def summarize(rows: list[dict[str, object]]) -> list[dict[str, object]]:
 
 
 def paired_statistics(rows: list[dict[str, object]], baseline_checkpoint: str) -> list[dict[str, object]]:
-    metrics = ["semantic_utility_score", "detector_retention", "psnr", "ssim", "compression_ratio", "bandwidth_saved_percent"]
+    metrics = [
+        "semantic_utility_score",
+        "detector_retention",
+        "psnr",
+        "ssim",
+        "lpips",
+        "compression_ratio",
+        "bandwidth_saved_percent",
+    ]
     output: list[dict[str, object]] = []
     try:
         from scipy import stats
@@ -286,7 +335,9 @@ def write_report(path: Path, args: argparse.Namespace, summary: list[dict[str, o
         "## Configuration",
         f"- Token retention: {args.keep_ratio}",
         f"- Per-dataset limit: {args.limit}",
+        f"- Manifest split: {args.manifest_split}",
         f"- LPIPS skipped: {args.skip_lpips}",
+        f"- Detector checkpoint: `{args.detector_checkpoint}`",
         "",
         "## Summary",
         "| Dataset | Checkpoint | Images | SUS | Detector Retention | PSNR | SSIM | Compression Ratio | Bandwidth Saved |",

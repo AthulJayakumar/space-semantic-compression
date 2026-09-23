@@ -12,10 +12,13 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.release import DEFAULT_CHECKPOINT_PATH, DEFAULT_CHECKPOINT_SHA256
+
 
 class Settings(BaseSettings):
     app_name: str = "CompressAI Semantic Compression API"
-    checkpoint_path: Path = Field(default=Path("checkpoints/vqvae_s16k8.pt"))
+    checkpoint_path: Path = Field(default=DEFAULT_CHECKPOINT_PATH)
+    checkpoint_sha256: str = Field(default=DEFAULT_CHECKPOINT_SHA256)
     output_dir: Path = Field(default=Path("outputs"))
     device: str = Field(default="auto")
     max_upload_mb: int = Field(default=25)

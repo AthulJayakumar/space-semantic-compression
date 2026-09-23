@@ -15,6 +15,7 @@ from uuid import uuid4
 import numpy as np
 from PIL import Image
 
+from semantic_ai.burn_scar_model import BurnScarUtilityNet
 from semantic_ai.detector_base import MissionDetector, MissionDetectorOutput
 
 
@@ -30,12 +31,71 @@ class WildfireDetector(MissionDetector):
         super().__init__(weights_path)
         self.output_dir = Path(output_dir) if output_dir is not None else None
         self.save_visualizations = save_visualizations
+        self._supervised_model = None
+        self._supervised_config: dict[str, object] | None = None
+        self._supervised_checked = False
 
     def detect(self, image: Image.Image) -> MissionDetectorOutput:
-        output = super().detect(image)
+        output = self._try_supervised_burn_scar(image)
+        if output is None:
+            output = super().detect(image)
         if self.save_visualizations and self.output_dir is not None:
             self.save_visualization(image, output)
         return output
+
+    def _try_supervised_burn_scar(self, image: Image.Image) -> MissionDetectorOutput | None:
+        if not self._supervised_checked:
+            self._load_supervised_model()
+        if self._supervised_model is None or self._supervised_config is None:
+            return None
+        import torch
+        import torch.nn.functional as functional
+
+        device = next(self._supervised_model.parameters()).device
+        input_size = int(self._supervised_config.get("input_size", 256))
+        resized = image.convert("RGB").resize((input_size, input_size), Image.Resampling.BILINEAR)
+        array = np.asarray(resized, dtype="float32") / 255.0
+        tensor = torch.from_numpy(array.transpose(2, 0, 1)).unsqueeze(0).to(device)
+        with torch.inference_mode():
+            logits = self._supervised_model(tensor)
+            temperature = max(float(self._supervised_config.get("temperature", 1.0)), 1e-6)
+            probability = torch.sigmoid(logits / temperature)
+            probability = functional.interpolate(
+                probability,
+                size=(image.height, image.width),
+                mode="bilinear",
+                align_corners=False,
+            )
+        confidence = probability[0, 0].float().cpu().numpy().astype("float32")
+        threshold = float(self._supervised_config.get("threshold", 0.5))
+        detections = self._connected_components(confidence >= threshold, "burn_scar", confidence)
+        return MissionDetectorOutput(
+            mission=self.mission_name,
+            utility_map=confidence,
+            confidence_map=confidence,
+            relevance_map=confidence,
+            detections=detections,
+            backend="supervised_burn_scar_unet",
+        )
+
+    def _load_supervised_model(self) -> None:
+        self._supervised_checked = True
+        if self.weights_path is None or not self.weights_path.exists():
+            return
+        try:
+            import torch
+
+            checkpoint = torch.load(self.weights_path, map_location="cpu", weights_only=True)
+        except Exception:
+            return
+        if not isinstance(checkpoint, dict) or checkpoint.get("model_type") != "burn_scar_utility_unet":
+            return
+        config = checkpoint.get("config", {})
+        model = BurnScarUtilityNet(int(config.get("base_channels", 16)))
+        model.load_state_dict(checkpoint["model"])
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._supervised_model = model.to(device).eval()
+        self._supervised_config = dict(config)
 
     def _vision_detect(self, image: Image.Image) -> MissionDetectorOutput:
         arr = np.asarray(image.convert("RGB")).astype("float32") / 255.0

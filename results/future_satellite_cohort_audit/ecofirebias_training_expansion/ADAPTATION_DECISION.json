@@ -1,0 +1,201 @@
+{
+  "status": "training_only_adaptation_exploratory_development_reuse",
+  "frozen_training_plan_sha256": "0c8cc23242836480bce2c1a5369d0dd295f50631be1391d05b01a6cb88ff249b",
+  "frozen_development_gate_sha256": "af122109dd739a5b94b17a533f7da24dee92a89e1f59ba1b390679dff5c478a1",
+  "training_manifest_sha256": "bdb87b6cc5c8d4f1d4dea9e7b4f760a24056b5369934b0d87790e414eb733443",
+  "base_checkpoint_sha256": "6e8b0255d39f388c19886cd36db3ff22a2835db872df1fbffefa44178ebd2e7b",
+  "adapted_checkpoint_sha256": "668cf5bda5c69b196d70306dbc6ed576c2675d372ffcfe2605e53a40286011f6",
+  "before_rows_sha256": "1a0e86a0ceff2b1ff145a8163d03861dfd5f2171986c01893b8ef59ed4a41d63",
+  "after_rows_sha256": "cbfd0cab0469fe9e31741b5c9b87706ca0dbad0f6698031ebeab65ce79a5197a",
+  "training_events": 480,
+  "internal_validation_events": 120,
+  "development_events": 18,
+  "sealed_test_scored": false,
+  "before": {
+    "advance": false,
+    "checks": {
+      "sus_mean_advantage": false,
+      "proxy_dice_mean_advantage": false,
+      "sus_ci_positive": false,
+      "proxy_dice_ci_positive": false,
+      "negative_false_positive_increase": true
+    },
+    "paired_differences_vs_jpeg2000": {
+      "sus": {
+        "mean_difference": -21.98313149686353,
+        "ci_low": -31.291452603066404,
+        "ci_high": -13.014665559826565,
+        "paired_t_p": 0.0002418831602534403,
+        "wilcoxon_p": 0.00025177001953125,
+        "n_events": 18
+      },
+      "label_dice": {
+        "mean_difference": -0.21197788858751848,
+        "ci_low": -0.3505536474346917,
+        "ci_high": -0.058636563337270686,
+        "paired_t_p": 0.013210543695308967,
+        "wilcoxon_p": 0.0023345947265625,
+        "n_events": 18
+      },
+      "predicted_positive_fraction": {
+        "mean_difference": -0.19279117624661005,
+        "ci_low": -0.3821673542463861,
+        "ci_high": 0.01119252770625542,
+        "paired_t_p": 0.07781026629342819,
+        "wilcoxon_p": 0.04511787115128092,
+        "n_events": 18
+      }
+    },
+    "summaries": {
+      "vqvae_fixed_utility": {
+        "mean_positive_sus": 70.00870143770067,
+        "mean_positive_proxy_dice": 0.24255109882564474,
+        "mean_positive_psnr": 19.25939451250403,
+        "mean_positive_ssim": 0.6404374403937372,
+        "mean_positive_detector_retention": 0.7258587943183051,
+        "mean_negative_predicted_positive_fraction": 0.2683677648492422,
+        "mean_encoded_bytes": 1124.1944444444443,
+        "max_encoded_bytes": 1200
+      },
+      "jpeg_rdo": {
+        "mean_positive_sus": 91.2362205423146,
+        "mean_positive_proxy_dice": 0.4421201266847772,
+        "mean_positive_psnr": 29.388044110881328,
+        "mean_positive_ssim": 0.9658647347219556,
+        "mean_positive_detector_retention": 0.9724735650751326,
+        "mean_negative_predicted_positive_fraction": 0.4656256865933525,
+        "mean_encoded_bytes": 1124.388888888889,
+        "max_encoded_bytes": 1196
+      },
+      "jpeg2000_rdo": {
+        "mean_positive_sus": 91.9918329345642,
+        "mean_positive_proxy_dice": 0.4545289874131632,
+        "mean_positive_psnr": 28.768648231781494,
+        "mean_positive_ssim": 0.9473057204245483,
+        "mean_positive_detector_retention": 0.9798190461264716,
+        "mean_negative_predicted_positive_fraction": 0.4611589410958522,
+        "mean_encoded_bytes": 1169.0277777777778,
+        "max_encoded_bytes": 1192
+      }
+    }
+  },
+  "after": {
+    "advance": false,
+    "checks": {
+      "sus_mean_advantage": false,
+      "proxy_dice_mean_advantage": false,
+      "sus_ci_positive": false,
+      "proxy_dice_ci_positive": false,
+      "negative_false_positive_increase": true
+    },
+    "paired_differences_vs_jpeg2000": {
+      "sus": {
+        "mean_difference": -6.963222720860897,
+        "ci_low": -11.579371576119309,
+        "ci_high": -2.74206244183574,
+        "paired_t_p": 0.007801590112201179,
+        "wilcoxon_p": 0.010176440395772814,
+        "n_events": 18
+      },
+      "label_dice": {
+        "mean_difference": -0.037920711367178436,
+        "ci_low": -0.09499277812987632,
+        "ci_high": 0.045102017351712556,
+        "paired_t_p": 0.32351762020518704,
+        "wilcoxon_p": 0.0138702392578125,
+        "n_events": 18
+      },
+      "predicted_positive_fraction": {
+        "mean_difference": -0.031901111245170595,
+        "ci_low": -0.13850283114547907,
+        "ci_high": 0.06806320629798482,
+        "paired_t_p": 0.5595846501390735,
+        "wilcoxon_p": 0.9132599547277199,
+        "n_events": 18
+      }
+    },
+    "summaries": {
+      "vqvae_fixed_utility": {
+        "mean_positive_sus": 85.0286102137033,
+        "mean_positive_proxy_dice": 0.4166082760459848,
+        "mean_positive_psnr": 19.948219648274385,
+        "mean_positive_ssim": 0.6246124382136857,
+        "mean_positive_detector_retention": 0.8891810559564166,
+        "mean_negative_predicted_positive_fraction": 0.42925782985068167,
+        "mean_encoded_bytes": 1134.2777777777778,
+        "max_encoded_bytes": 1200
+      },
+      "jpeg_rdo": {
+        "mean_positive_sus": 91.2362205423146,
+        "mean_positive_proxy_dice": 0.4421201266847772,
+        "mean_positive_psnr": 29.388044110881328,
+        "mean_positive_ssim": 0.9658647347219556,
+        "mean_positive_detector_retention": 0.9724735650751326,
+        "mean_negative_predicted_positive_fraction": 0.4656256865933525,
+        "mean_encoded_bytes": 1124.388888888889,
+        "max_encoded_bytes": 1196
+      },
+      "jpeg2000_rdo": {
+        "mean_positive_sus": 91.9918329345642,
+        "mean_positive_proxy_dice": 0.4545289874131632,
+        "mean_positive_psnr": 28.768648231781494,
+        "mean_positive_ssim": 0.9473057204245483,
+        "mean_positive_detector_retention": 0.9798190461264716,
+        "mean_negative_predicted_positive_fraction": 0.4611589410958522,
+        "mean_encoded_bytes": 1169.0277777777778,
+        "max_encoded_bytes": 1192
+      }
+    }
+  },
+  "paired_adapted_minus_base": {
+    "sus": {
+      "mean_difference": 15.01990877600263,
+      "ci_low": 7.911345403566973,
+      "ci_high": 22.736577628126252,
+      "paired_t_p": 0.0011983554536323213,
+      "wilcoxon_p": 0.005316192116247479,
+      "n_events": 18
+    },
+    "label_dice": {
+      "mean_difference": 0.17405717722034003,
+      "ci_low": 0.07800118677678473,
+      "ci_high": 0.27528756278978855,
+      "paired_t_p": 0.0035932535895227134,
+      "wilcoxon_p": 0.0023345947265625,
+      "n_events": 18
+    },
+    "psnr": {
+      "mean_difference": 0.6888251357703531,
+      "ci_low": -0.04014010903382902,
+      "ci_high": 1.4580888526195837,
+      "paired_t_p": 0.09652542564808898,
+      "wilcoxon_p": 0.16735076904296875,
+      "n_events": 18
+    },
+    "ssim": {
+      "mean_difference": -0.015825002180051485,
+      "ci_low": -0.04803445201074186,
+      "ci_high": 0.017107244679614015,
+      "paired_t_p": 0.3609498538476271,
+      "wilcoxon_p": 0.39273834228515625,
+      "n_events": 18
+    },
+    "detector_retention": {
+      "mean_difference": 0.16332226163811153,
+      "ci_low": 0.08797318902280596,
+      "ci_high": 0.24202037962774434,
+      "paired_t_p": 0.0009490897304072309,
+      "wilcoxon_p": 0.004044573348698453,
+      "n_events": 18
+    },
+    "predicted_positive_fraction": {
+      "mean_difference": 0.1608900650014395,
+      "ci_low": -0.011170830995605474,
+      "ci_high": 0.31104692799904493,
+      "paired_t_p": 0.07449146976060168,
+      "wilcoxon_p": 0.006924737301589779,
+      "n_events": 18
+    }
+  },
+  "interpretation": "The development set has been consulted twice; improvement versus base is exploratory and cannot establish independent superiority"
+}

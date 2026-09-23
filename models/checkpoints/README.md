@@ -1,17 +1,15 @@
-# Model Checkpoints
+# Model checkpoint location
 
-Large model checkpoint files are not stored in this public repository.
-
-Expected default checkpoint:
+Place the v0.2.0 research checkpoint here:
 
 ```text
-checkpoints/vqvae_s16k8.pt
+vqvae_ecofirebias_train_adapted.pt
 ```
 
-or set:
+Expected SHA-256:
 
-```bash
-COMPRESSAI_CHECKPOINT_PATH=path/to/checkpoint.pt
+```text
+668cf5bda5c69b196d70306dbc6ed576c2675d372ffcfe2605e53a40286011f6
 ```
 
-The code keeps checkpoint loading separate so the repository can remain lightweight for supervisors, reviewers, and GitHub visitors.
+The checkpoint is approximately 28.9 MB and is intentionally excluded from Git. It is an experimental research artifact that failed the predeclared advancement gate against JPEG2000; it is not a production or flight model. See `MODEL_CARD.md`.

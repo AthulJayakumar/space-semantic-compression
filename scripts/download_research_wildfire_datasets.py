@@ -62,6 +62,14 @@ def main() -> None:
         record.update({"dataset": spec.name, "task": spec.task, "license": spec.license, "notes": spec.notes})
         download_records.append(record)
 
+        downloaded_files = [
+            path
+            for path in local_dir.rglob("*")
+            if path.is_file() and "_manifest." not in path.name and ".cache" not in path.parts
+        ]
+        if not downloaded_files:
+            raise RuntimeError(f"Dataset download produced no data files: {spec.repo_id}")
+
         rows = build_manifest(local_dir, spec.name)
         all_rows.extend(rows)
         dataset_manifest = local_dir / f"{spec.name}_manifest.csv"

@@ -75,8 +75,8 @@ RECOMMENDED_DATASETS: dict[str, ResearchDatasetSpec] = {
         expected_scale="804 scenes with masks",
         notes="Harmonized Landsat/Sentinel-2 burn-scar data; useful for real mask supervision.",
         small_allow_patterns=("*.py", "*.md", "*.json", "**/*.png", "**/*.jpg", "**/*.tif", "**/*.tiff"),
-        standard_allow_patterns=("**/*",),
-        full_allow_patterns=("**/*",),
+        standard_allow_patterns=("*", "**/*"),
+        full_allow_patterns=("*", "**/*"),
     ),
     "firescope_small": ResearchDatasetSpec(
         name="firescope_small",

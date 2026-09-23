@@ -78,8 +78,9 @@ class VectorQuantizerEMA(nn.Module):
         z_q = codebook[idx]                      # (N,D)
         z_q = rearrange(z_q, "(b h w) d -> b d h w", b=B, h=H, w=W)
 
-        # commitment loss
-        commit_loss = F.mse_loss(z_e.detach(), z_q)
+        # The encoder commits to the selected EMA code. The codebook itself is
+        # updated by EMA, so gradients must flow to z_e rather than z_q.
+        commit_loss = F.mse_loss(z_e, z_q.detach())
 
         # EMA updates are training-only. Inference must not mutate the codebook.
         if self.training:

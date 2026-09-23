@@ -1,0 +1,135 @@
+{
+  "status": "one_off_official_validation_not_sealed_test",
+  "frozen_plan_sha256": "a942537e76b66adc1b59d548e06ee5d3f74fe484d5c934276773de6267053b67",
+  "preparation_sha256": "e1386ca9be9917fefd655045d86133a6a98c2fe6a9a1b0606aab5f6373617964",
+  "rows_sha256": {
+    "base": "3e0f856d9cd1275504d48d00bf928e9884be2ad32aa283ed2c487c5cfc4d0102",
+    "adapted": "08c1d675330be37f64690c531f337d19735eba95996b364bcdbfb6976012c3a9"
+  },
+  "events": 60,
+  "burn_images": 60,
+  "negative_images": 60,
+  "byte_ceiling": 1200,
+  "sealed_test_scored": false,
+  "summaries": {
+    "JPEG": {
+      "burn_sus": 92.71734308658614,
+      "burn_proxy_dice": 0.5186826630713985,
+      "burn_psnr_db": 27.965436138188178,
+      "burn_ssim": 0.9414783041755254,
+      "burn_detector_retention": 0.9733574052651723,
+      "negative_predicted_positive_fraction": 0.5091138683854256,
+      "mean_serialized_bytes": 1116.7166666666667,
+      "max_serialized_bytes": 1199
+    },
+    "JPEG2000 RDO": {
+      "burn_sus": 95.1221356236526,
+      "burn_proxy_dice": 0.5330542260232412,
+      "burn_psnr_db": 27.181936121876777,
+      "burn_ssim": 0.9128131610523443,
+      "burn_detector_retention": 0.9853377838929495,
+      "negative_predicted_positive_fraction": 0.5087213672111371,
+      "mean_serialized_bytes": 1177.525,
+      "max_serialized_bytes": 1192
+    },
+    "Base VQ-VAE": {
+      "burn_sus": 70.84708911072049,
+      "burn_proxy_dice": 0.28577126593260316,
+      "burn_psnr_db": 19.87086557970429,
+      "burn_ssim": 0.643750744840198,
+      "burn_detector_retention": 0.727916985253493,
+      "negative_predicted_positive_fraction": 0.22473427129348822,
+      "mean_serialized_bytes": 1140.7916666666667,
+      "max_serialized_bytes": 1200
+    },
+    "Adapted VQ-VAE": {
+      "burn_sus": 83.27633181957381,
+      "burn_proxy_dice": 0.46879845013262716,
+      "burn_psnr_db": 20.780206315928815,
+      "burn_ssim": 0.6358781204882443,
+      "burn_detector_retention": 0.8691484113534291,
+      "negative_predicted_positive_fraction": 0.5086745151792652,
+      "mean_serialized_bytes": 1155.375,
+      "max_serialized_bytes": 1200
+    }
+  },
+  "paired_adapted_minus": {
+    "Base VQ-VAE": {
+      "sus": {
+        "mean_difference": 12.429242708853318,
+        "ci_low": 8.735836367141838,
+        "ci_high": 16.306099102650165,
+        "n_events": 60
+      },
+      "label_dice": {
+        "mean_difference": 0.18302718420002392,
+        "ci_low": 0.12164980366157765,
+        "ci_high": 0.2452990271284825,
+        "n_events": 60
+      },
+      "psnr": {
+        "mean_difference": 0.9093407362245174,
+        "ci_low": 0.2068507718270853,
+        "ci_high": 1.6522507316097592,
+        "n_events": 60
+      },
+      "ssim": {
+        "mean_difference": -0.007872624351953707,
+        "ci_low": -0.04494154161215816,
+        "ci_high": 0.022591755855553817,
+        "n_events": 60
+      },
+      "detector_retention": {
+        "mean_difference": 0.14123142609993616,
+        "ci_low": 0.10035401788850626,
+        "ci_high": 0.18119813907891513,
+        "n_events": 60
+      },
+      "predicted_positive_fraction": {
+        "mean_difference": 0.28394024388577693,
+        "ci_low": 0.20205788022769647,
+        "ci_high": 0.3645878175488944,
+        "n_events": 60
+      }
+    },
+    "JPEG2000 RDO": {
+      "sus": {
+        "mean_difference": -11.8458038040788,
+        "ci_low": -15.136261768815467,
+        "ci_high": -8.722739422534188,
+        "n_events": 60
+      },
+      "label_dice": {
+        "mean_difference": -0.06425577589061392,
+        "ci_low": -0.11336285562063476,
+        "ci_high": -0.017508789348727846,
+        "n_events": 60
+      },
+      "psnr": {
+        "mean_difference": -6.401729805947971,
+        "ci_low": -7.241549803090384,
+        "ci_high": -5.634276905558463,
+        "n_events": 60
+      },
+      "ssim": {
+        "mean_difference": -0.27693504056409995,
+        "ci_low": -0.3237676445423025,
+        "ci_high": -0.23369917160377024,
+        "n_events": 60
+      },
+      "detector_retention": {
+        "mean_difference": -0.11618937253952026,
+        "ci_low": -0.1520073797057072,
+        "ci_high": -0.0832813160866499,
+        "n_events": 60
+      },
+      "predicted_positive_fraction": {
+        "mean_difference": -4.685203187205731e-05,
+        "ci_low": -0.05996136973563949,
+        "ci_high": 0.05697277982253391,
+        "n_events": 60
+      }
+    }
+  },
+  "interpretation": "One event-disjoint official-validation comparison, but countries overlap selected training, labels are quantized dNBR proxies, and the prior frozen development gate failed; this cannot establish independent superiority or authorize sealed testing."
+}

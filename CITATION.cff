@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this research software, please cite the repository release."
+title: "Space Semantic Compression: Wildfire-Centric Earth Observation Research Platform"
+type: software
+authors:
+  - family-names: Jayakumar
+    given-names: Athul
+version: 0.2.0
+date-released: 2026-09-24
+repository-code: "https://github.com/AthulJayakumar/space-semantic-compression"
+abstract: >-
+  A research prototype for evaluating semantic utility-aware VQ-VAE token
+  transmission against conventional image codecs under constrained Earth
+  Observation payload budgets.
+keywords:
+  - Earth Observation
+  - semantic communication
+  - learned image compression
+  - wildfire
+  - VQ-VAE
+license: NOASSERTION

@@ -27,6 +27,7 @@ if str(ROOT) not in sys.path:
 
 from backend.utils.tensor_utils import resolve_device  # noqa: E402
 from datasets.research_wildfire import ManifestRow, load_rgb_image, looks_like_mask, read_manifest  # noqa: E402
+from semantic_ai.burn_scar_model import BurnScarUtilityNet  # noqa: E402
 from src.models.vqvae import VQVAE  # noqa: E402
 
 
@@ -70,6 +71,41 @@ def main() -> None:
     parser.add_argument("--image-size", type=int, default=256)
     parser.add_argument("--learning-rate", type=float, default=5e-5)
     parser.add_argument("--commit-weight", type=float, default=0.0)
+    parser.add_argument(
+        "--semantic-detector-checkpoint",
+        type=Path,
+        default=None,
+        help="Optional frozen burn-scar detector used for differentiable mission-map consistency.",
+    )
+    parser.add_argument(
+        "--semantic-consistency-weight",
+        type=float,
+        default=0.0,
+        help="Weight applied to the frozen detector probability-map consistency loss.",
+    )
+    parser.add_argument(
+        "--semantic-positive-weight",
+        type=float,
+        default=2.0,
+        help="Additional weight assigned to high-confidence mission-relevant pixels.",
+    )
+    parser.add_argument(
+        "--pruned-training-weight",
+        type=float,
+        default=0.0,
+        help="Weight for reconstruction and semantic consistency after utility-guided token pruning.",
+    )
+    parser.add_argument(
+        "--pruned-retention",
+        type=float,
+        default=0.2,
+        help="Fraction of utility-ranked tokens retained by the optional pruned training branch.",
+    )
+    parser.add_argument(
+        "--wire-fallback",
+        action="store_true",
+        help="Use the modal retained code for pruning, so the receiver can reproduce the training input.",
+    )
     parser.add_argument(
         "--teacher-checkpoint",
         type=Path,
@@ -115,6 +151,14 @@ def main() -> None:
         teacher_model.eval()
         for parameter in teacher_model.parameters():
             parameter.requires_grad = False
+    semantic_detector = None
+    semantic_temperature = 1.0
+    if args.semantic_consistency_weight > 0 or args.pruned_training_weight > 0:
+        if args.semantic_detector_checkpoint is None:
+            raise ValueError("--semantic-detector-checkpoint is required when semantic consistency is enabled")
+        semantic_detector, semantic_temperature = load_semantic_detector(
+            args.semantic_detector_checkpoint, device
+        )
     if args.freeze_codebook:
         freeze_codebook(model)
 
@@ -149,6 +193,13 @@ def main() -> None:
             freeze_codebook=args.freeze_codebook,
             teacher_model=teacher_model,
             teacher_consistency_weight=args.teacher_consistency_weight,
+            semantic_detector=semantic_detector,
+            semantic_temperature=semantic_temperature,
+            semantic_consistency_weight=args.semantic_consistency_weight,
+            semantic_positive_weight=args.semantic_positive_weight,
+            pruned_training_weight=args.pruned_training_weight,
+            pruned_retention=args.pruned_retention,
+            wire_fallback=args.wire_fallback,
         )
         validation_metrics = run_epoch(
             model,
@@ -160,6 +211,13 @@ def main() -> None:
             freeze_codebook=args.freeze_codebook,
             teacher_model=teacher_model,
             teacher_consistency_weight=args.teacher_consistency_weight,
+            semantic_detector=semantic_detector,
+            semantic_temperature=semantic_temperature,
+            semantic_consistency_weight=args.semantic_consistency_weight,
+            semantic_positive_weight=args.semantic_positive_weight,
+            pruned_training_weight=args.pruned_training_weight,
+            pruned_retention=args.pruned_retention,
+            wire_fallback=args.wire_fallback,
         )
         row = {
             "epoch": epoch,
@@ -169,6 +227,12 @@ def main() -> None:
             "validation_reconstruction_loss": validation_metrics["reconstruction_loss"],
             "train_teacher_consistency_loss": train_metrics["teacher_consistency_loss"],
             "validation_teacher_consistency_loss": validation_metrics["teacher_consistency_loss"],
+            "train_semantic_consistency_loss": train_metrics["semantic_consistency_loss"],
+            "validation_semantic_consistency_loss": validation_metrics["semantic_consistency_loss"],
+            "train_pruned_reconstruction_loss": train_metrics["pruned_reconstruction_loss"],
+            "validation_pruned_reconstruction_loss": validation_metrics["pruned_reconstruction_loss"],
+            "train_pruned_semantic_loss": train_metrics["pruned_semantic_loss"],
+            "validation_pruned_semantic_loss": validation_metrics["pruned_semantic_loss"],
             "train_psnr": train_metrics["psnr"],
             "validation_psnr": validation_metrics["psnr"],
             "train_samples": len(train_rows),
@@ -204,6 +268,12 @@ def main() -> None:
                 "commit_weight": args.commit_weight,
                 "teacher_checkpoint": str(args.teacher_checkpoint or ""),
                 "teacher_consistency_weight": args.teacher_consistency_weight,
+                "semantic_detector_checkpoint": str(args.semantic_detector_checkpoint or ""),
+                "semantic_consistency_weight": args.semantic_consistency_weight,
+                "semantic_positive_weight": args.semantic_positive_weight,
+                "pruned_training_weight": args.pruned_training_weight,
+                "pruned_retention": args.pruned_retention,
+                "wire_fallback": args.wire_fallback,
                 "validation_fraction": args.validation_fraction,
                 "seed": args.seed,
                 "train_samples": len(train_rows),
@@ -250,6 +320,67 @@ def freeze_codebook(model: VQVAE) -> None:
         parameter.requires_grad = False
 
 
+def load_semantic_detector(
+    checkpoint_path: Path, device: torch.device
+) -> tuple[BurnScarUtilityNet, float]:
+    """Load a frozen differentiable detector without changing its calibration."""
+
+    checkpoint = load_checkpoint(checkpoint_path)
+    if checkpoint.get("model_type") != "burn_scar_utility_unet":
+        raise ValueError(f"Unsupported semantic detector checkpoint: {checkpoint_path}")
+    config = checkpoint.get("config", {})
+    detector = BurnScarUtilityNet(int(config.get("base_channels", 16))).to(device)
+    detector.load_state_dict(checkpoint["model"])
+    detector.eval()
+    for parameter in detector.parameters():
+        parameter.requires_grad = False
+    return detector, max(float(config.get("temperature", 1.0)), 1e-6)
+
+
+def semantic_consistency_loss(
+    reconstruction: torch.Tensor,
+    target: torch.Tensor,
+    detector: BurnScarUtilityNet,
+    temperature: float,
+    positive_weight: float,
+) -> torch.Tensor:
+    """Preserve the frozen detector response while retaining input gradients."""
+
+    target_rgb = ((target + 1.0) * 0.5).clamp(0.0, 1.0)
+    reconstruction_rgb = ((reconstruction + 1.0) * 0.5).clamp(0.0, 1.0)
+    with torch.no_grad():
+        target_probability = torch.sigmoid(detector(target_rgb) / temperature)
+    reconstruction_probability = torch.sigmoid(detector(reconstruction_rgb) / temperature)
+    weights = 1.0 + max(float(positive_weight), 0.0) * target_probability
+    return (F.smooth_l1_loss(reconstruction_probability, target_probability, reduction="none") * weights).mean()
+
+
+def prune_tokens_by_utility(
+    tokens: torch.Tensor,
+    utility_map: torch.Tensor,
+    keep_ratio: float,
+    wire_fallback: bool = False,
+) -> torch.Tensor:
+    """Replace low-utility tokens with each sample's modal fallback code."""
+
+    if tokens.ndim != 3:
+        raise ValueError(f"Expected B x H x W tokens, received {tuple(tokens.shape)}")
+    ratio = float(np.clip(keep_ratio, 0.01, 1.0))
+    utility = F.interpolate(utility_map, size=tokens.shape[-2:], mode="bilinear", align_corners=False)
+    flat_utility = utility[:, 0].reshape(tokens.shape[0], -1)
+    flat_tokens = tokens.reshape(tokens.shape[0], -1)
+    keep_count = max(1, int(round(flat_tokens.shape[1] * ratio)))
+    selected = flat_utility.topk(keep_count, dim=1, largest=True, sorted=False).indices
+    keep_mask = torch.zeros_like(flat_tokens, dtype=torch.bool)
+    keep_mask.scatter_(1, selected, True)
+    if wire_fallback:
+        selected_codes = flat_tokens.gather(1, selected)
+        fallback = torch.mode(selected_codes, dim=1).values.unsqueeze(1)
+    else:
+        fallback = torch.mode(flat_tokens, dim=1).values.unsqueeze(1)
+    return torch.where(keep_mask, flat_tokens, fallback).view_as(tokens).long()
+
+
 def run_epoch(
     model: VQVAE,
     loader: DataLoader,
@@ -260,6 +391,13 @@ def run_epoch(
     freeze_codebook: bool,
     teacher_model: VQVAE | None = None,
     teacher_consistency_weight: float = 0.0,
+    semantic_detector: BurnScarUtilityNet | None = None,
+    semantic_temperature: float = 1.0,
+    semantic_consistency_weight: float = 0.0,
+    semantic_positive_weight: float = 2.0,
+    pruned_training_weight: float = 0.0,
+    pruned_retention: float = 0.2,
+    wire_fallback: bool = False,
 ) -> dict[str, float]:
     model.train(train)
     if train and freeze_codebook:
@@ -267,6 +405,9 @@ def run_epoch(
     losses: list[float] = []
     reconstruction_losses: list[float] = []
     teacher_losses: list[float] = []
+    semantic_losses: list[float] = []
+    pruned_reconstruction_losses: list[float] = []
+    pruned_semantic_losses: list[float] = []
     psnr_values: list[float] = []
     context = torch.enable_grad() if train else torch.no_grad()
     with context:
@@ -274,7 +415,7 @@ def run_epoch(
             batch = batch.to(device)
             if train:
                 optimizer.zero_grad(set_to_none=True)
-            reconstruction, _, commit = model(batch)
+            reconstruction, tokens, commit = model(batch)
             l1 = F.l1_loss(reconstruction, batch)
             mse = F.mse_loss(reconstruction, batch)
             reconstruction_loss = l1 + 0.25 * mse
@@ -285,7 +426,41 @@ def run_epoch(
                 teacher_l1 = F.l1_loss(reconstruction, teacher_reconstruction)
                 teacher_mse = F.mse_loss(reconstruction, teacher_reconstruction)
                 teacher_loss = teacher_l1 + 0.25 * teacher_mse
-            loss = reconstruction_loss + commit_weight * commit + teacher_consistency_weight * teacher_loss
+            semantic_loss = torch.zeros((), device=device)
+            if semantic_detector is not None and semantic_consistency_weight > 0:
+                semantic_loss = semantic_consistency_loss(
+                    reconstruction,
+                    batch,
+                    semantic_detector,
+                    semantic_temperature,
+                    semantic_positive_weight,
+                )
+            pruned_reconstruction_loss = torch.zeros((), device=device)
+            pruned_semantic_loss = torch.zeros((), device=device)
+            if semantic_detector is not None and pruned_training_weight > 0:
+                with torch.no_grad():
+                    target_rgb = ((batch + 1.0) * 0.5).clamp(0.0, 1.0)
+                    utility_map = torch.sigmoid(semantic_detector(target_rgb) / semantic_temperature)
+                    pruned_tokens = prune_tokens_by_utility(tokens, utility_map, pruned_retention, wire_fallback)
+                pruned_reconstruction = model.decode(pruned_tokens)
+                pruned_l1 = F.l1_loss(pruned_reconstruction, batch)
+                pruned_mse = F.mse_loss(pruned_reconstruction, batch)
+                pruned_reconstruction_loss = pruned_l1 + 0.25 * pruned_mse
+                pruned_semantic_loss = semantic_consistency_loss(
+                    pruned_reconstruction,
+                    batch,
+                    semantic_detector,
+                    semantic_temperature,
+                    semantic_positive_weight,
+                )
+            loss = (
+                reconstruction_loss
+                + commit_weight * commit
+                + teacher_consistency_weight * teacher_loss
+                + semantic_consistency_weight * semantic_loss
+                + pruned_training_weight
+                * (pruned_reconstruction_loss + semantic_consistency_weight * pruned_semantic_loss)
+            )
             if train:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -293,11 +468,19 @@ def run_epoch(
             losses.append(float(loss.detach().cpu()))
             reconstruction_losses.append(float(reconstruction_loss.detach().cpu()))
             teacher_losses.append(float(teacher_loss.detach().cpu()))
+            semantic_losses.append(float(semantic_loss.detach().cpu()))
+            pruned_reconstruction_losses.append(float(pruned_reconstruction_loss.detach().cpu()))
+            pruned_semantic_losses.append(float(pruned_semantic_loss.detach().cpu()))
             psnr_values.append(psnr_from_normalized_mse(float(mse.detach().cpu())))
     return {
         "loss": float(np.mean(losses)) if losses else 0.0,
         "reconstruction_loss": float(np.mean(reconstruction_losses)) if reconstruction_losses else 0.0,
         "teacher_consistency_loss": float(np.mean(teacher_losses)) if teacher_losses else 0.0,
+        "semantic_consistency_loss": float(np.mean(semantic_losses)) if semantic_losses else 0.0,
+        "pruned_reconstruction_loss": (
+            float(np.mean(pruned_reconstruction_losses)) if pruned_reconstruction_losses else 0.0
+        ),
+        "pruned_semantic_loss": float(np.mean(pruned_semantic_losses)) if pruned_semantic_losses else 0.0,
         "psnr": float(np.mean(psnr_values)) if psnr_values else 0.0,
     }
 
@@ -399,10 +582,18 @@ def write_report(path: Path, args: argparse.Namespace, rows: list[dict[str, obje
                 f"- Codebook frozen: {args.freeze_codebook}",
                 f"- Teacher checkpoint: `{args.teacher_checkpoint or ''}`",
                 f"- Teacher consistency weight: {args.teacher_consistency_weight}",
+                f"- Semantic detector checkpoint: `{args.semantic_detector_checkpoint or ''}`",
+                f"- Semantic consistency weight: {args.semantic_consistency_weight}",
+                f"- Semantic positive-region weight: {args.semantic_positive_weight}",
+                f"- Pruned training weight: {args.pruned_training_weight}",
+                f"- Pruned token retention: {args.pruned_retention}",
                 "",
                 "## Result",
                 f"- Final validation loss: {final_row.get('validation_loss', 'n/a')}",
                 f"- Final validation reconstruction loss: {final_row.get('validation_reconstruction_loss', 'n/a')}",
+                f"- Final validation semantic consistency loss: {final_row.get('validation_semantic_consistency_loss', 'n/a')}",
+                f"- Final validation pruned reconstruction loss: {final_row.get('validation_pruned_reconstruction_loss', 'n/a')}",
+                f"- Final validation pruned semantic loss: {final_row.get('validation_pruned_semantic_loss', 'n/a')}",
                 f"- Final validation PSNR: {final_row.get('validation_psnr', 'n/a')}",
                 f"- Best validation loss: {best_row.get('validation_loss', 'n/a')}",
                 f"- Best validation PSNR: {best_row.get('validation_psnr', 'n/a')}",

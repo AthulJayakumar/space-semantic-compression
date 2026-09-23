@@ -24,7 +24,11 @@ from backend.services.visualization_service import VisualizationService
 @lru_cache(maxsize=1)
 def get_compression_service() -> CompressionService:
     settings = get_settings()
-    encoder = EncoderService(settings.checkpoint_path, settings.device)
+    encoder = EncoderService(
+        settings.checkpoint_path,
+        settings.device,
+        expected_sha256=settings.checkpoint_sha256,
+    )
     decoder = DecoderService(encoder)
     return CompressionService(
         encoder_service=encoder,

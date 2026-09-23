@@ -2,8 +2,8 @@ default_mission: wildfire_detection
 
 missions:
   wildfire_detection:
-    detector: wildfire_yolo_or_vision
-    detector_weights: models/checkpoints/wildfire_yolo.pt
+    detector: supervised_burn_scar_or_vision
+    detector_weights: models/checkpoints/wildfire_utility_segmentation.pt
     positive_labels: [fire, smoke, burned_area, thermal_hotspot]
     utility_weights:
       detector_confidence: 0.40

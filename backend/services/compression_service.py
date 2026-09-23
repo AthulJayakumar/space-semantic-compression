@@ -65,7 +65,7 @@ class CompressionService:
         self.energy_model = EnergyModel()
         self.research_objective = ResearchObjective()
         self.detectors = {
-            "wildfire_detection": WildfireDetector("models/checkpoints/wildfire_yolo.pt"),
+            "wildfire_detection": WildfireDetector("models/checkpoints/wildfire_utility_segmentation.pt"),
             "flood_detection": FloodDetector("models/checkpoints/flood_yolo.pt"),
             "ship_detection": ShipDetector("models/checkpoints/ship_yolo.pt"),
         }
@@ -103,13 +103,16 @@ class CompressionService:
                 detail_map=detail_map,
             )
             semantic_tokens = int(keep_mask.sum())
-            pruned_tokens = self.token_service.prune_tokens(tokens, keep_mask)
-            token_entropy = self.token_service.token_entropy_bits(pruned_tokens)
+            semantic_payload = self.token_service.serialize_payload(tokens, keep_mask)
+            received_tokens, received_mask = self.token_service.deserialize_payload(semantic_payload)
+            if not np.array_equal(received_mask, keep_mask):
+                raise RuntimeError("Decoded token mask does not match transmitted selection")
+            token_entropy = self.token_service.token_entropy_bits(received_tokens)
             semantic_fidelity = self.token_service.semantic_fidelity_percent(utility_map, keep_mask)
 
         with profiler.track("transmission"):
             full_payload_kb = self.token_service.estimate_payload_kb(tokens)
-            compressed_size_kb = self.token_service.estimate_payload_kb(pruned_tokens, keep_mask)
+            compressed_size_kb = len(semantic_payload) / 1024.0
             transmission = self.transmission_service.simulate(
                 full_payload_kb=full_payload_kb,
                 semantic_payload_kb=compressed_size_kb,
@@ -119,7 +122,7 @@ class CompressionService:
             )
 
         with profiler.track("reconstruction"):
-            reconstruction_tensor = self.decoder_service.decode(pruned_tokens)
+            reconstruction_tensor = self.decoder_service.decode(received_tokens)
             reconstruction = tensor_to_image(reconstruction_tensor)
             detector_after = self._detect_mission_utility(reconstruction, token_shape, mission)
             sus, sus_components = self.semantic_utility_metric.score_before_after(detector_output, detector_after)

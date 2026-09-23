@@ -1,11 +1,11 @@
-# Checkpoints
+# Legacy checkpoint location
 
-Place compatible model checkpoint files here when running local compression.
+This directory is retained for backward compatibility with early scripts that expect `checkpoints/vqvae_s16k8.pt`.
 
-Default expected path:
+Research release v0.2.0 uses:
 
 ```text
-checkpoints/vqvae_s16k8.pt
+models/checkpoints/vqvae_ecofirebias_train_adapted.pt
 ```
 
-Checkpoint binaries are intentionally ignored by Git so the repository remains lightweight.
+See the repository-level `MODEL_CARD.md` for its exact SHA-256 hash, training provenance and limitations. Checkpoint binaries are excluded from Git.

@@ -58,13 +58,54 @@ class TokenTransmissionService:
         return float(max(entropy, 0.0))
 
     def estimate_payload_kb(self, tokens: torch.Tensor, keep_mask: np.ndarray | None = None) -> float:
+        return self.payload_bytes(tokens, keep_mask) / 1024.0
+
+    def serialize_payload(self, tokens: torch.Tensor, keep_mask: np.ndarray | None = None) -> bytes:
+        """Serialize exactly what would be transmitted for a token payload.
+
+        Matched-rate experiments must compare encoded byte streams rather than
+        theoretical token counts.  Keeping serialization in one place also
+        ensures that API compression metrics and research benchmarks use the
+        same wire representation.
+        """
         codes = tokens.detach().cpu().numpy().astype(np.uint16)
         buffer = BytesIO()
         if keep_mask is None:
             np.savez_compressed(buffer, codes=codes)
         else:
             np.savez_compressed(buffer, codes=codes.reshape(-1)[keep_mask.reshape(-1)], mask=keep_mask.astype(np.uint8))
-        return len(buffer.getvalue()) / 1024.0
+        return buffer.getvalue()
+
+    def deserialize_payload(self, payload: bytes) -> tuple[torch.Tensor, np.ndarray | None]:
+        """Recover tokens using only information actually present on the wire."""
+        with np.load(BytesIO(payload), allow_pickle=False) as archive:
+            keys = set(archive.files)
+            if keys == {"codes"}:
+                codes = np.asarray(archive["codes"])
+                if codes.ndim != 3 or not np.issubdtype(codes.dtype, np.integer):
+                    raise ValueError("Full token payload must contain an integer [B,H,W] grid")
+                return torch.from_numpy(codes.astype(np.int64)), None
+            if keys != {"codes", "mask"}:
+                raise ValueError("Token payload must contain codes and optional mask only")
+            selected = np.asarray(archive["codes"])
+            raw_mask = np.asarray(archive["mask"])
+        if raw_mask.ndim != 2 or not np.isin(raw_mask, (0, 1)).all():
+            raise ValueError("Token mask must be a binary [H,W] grid")
+        if selected.ndim != 1 or not np.issubdtype(selected.dtype, np.integer):
+            raise ValueError("Selected token codes must be a flat integer array")
+        mask = raw_mask.astype(bool)
+        if selected.size != int(mask.sum()) or selected.size == 0:
+            raise ValueError("Selected code count must equal the number of kept positions")
+        values, counts = np.unique(selected, return_counts=True)
+        fallback = int(values[np.argmax(counts)])
+        restored = np.full(mask.shape, fallback, dtype=np.int64)
+        restored[mask] = selected.astype(np.int64)
+        return torch.from_numpy(restored).unsqueeze(0), mask
+
+    def payload_bytes(self, tokens: torch.Tensor, keep_mask: np.ndarray | None = None) -> int:
+        """Return the measured serialized payload size in bytes."""
+
+        return len(self.serialize_payload(tokens, keep_mask))
 
     def semantic_fidelity_percent(self, token_importance: np.ndarray, keep_mask: np.ndarray) -> float:
         total = float(token_importance.sum())

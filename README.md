@@ -1,197 +1,88 @@
 # Space Semantic Compression
 
-**Semantic Communication and Edge Intelligence for Resource-Constrained Earth Observation Satellites**
+**Research release v0.2.0 - Semantic utility-aware communication for wildfire Earth Observation**
 
-This repository contains a research prototype for **mission-aware satellite image compression**.  
-In simple terms: it studies how a satellite can send the **most important parts of an image first** when bandwidth is limited.
+This repository studies one focused question:
 
-The current mission focus is **wildfire monitoring**. Instead of compressing every pixel equally, the system tries to preserve regions that may contain:
+> When a satellite cannot transmit a complete image, can it preserve wildfire-relevant information by sending learned image tokens in order of mission utility?
 
-- active fire
-- smoke
-- burn scars
-- damaged or affected terrain
-- mission-relevant Earth Observation evidence
+The project combines a VQ-VAE image representation, wildfire utility maps, token selection, measured payload serialisation, reconstruction, classical-codec baselines and event-paired evaluation. It is a research prototype, not flight software or an operational warning system.
 
-The project is designed for PhD applications, supervisor review, research demonstrations, and future publication work in Earth Observation AI, semantic communication, edge AI, and satellite systems.
+## Current Scientific Status
 
----
+The central hypothesis is **unconfirmed**. The latest frozen comparison shows that training adaptation improved the learned model, but JPEG2000 remained stronger at the tested byte ceiling.
 
-## 1. What Problem Does This Solve?
+The principal current result uses 60 EcoFireBias event pairs: 60 post-fire Sentinel-2 RGB chips and 60 matched negative chips, each at 224 x 224 pixels. Every method obeyed a maximum 1,200-byte serialised payload per image. This is a common ceiling, not exactly identical transmitted sizes.
 
-Satellites can capture huge amounts of imagery, but they cannot always send all of it back to Earth quickly. This is especially true for:
+| Method | Burn SUS | dNBR-proxy Dice | PSNR (dB) | SSIM | Detector retention | Negative predicted-positive area | Mean payload (bytes) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| JPEG | 92.72 | 0.519 | 27.97 | 0.941 | 0.973 | 0.509 | 1,116.7 |
+| JPEG2000 RDO | **95.12** | **0.533** | 27.18 | 0.913 | **0.985** | 0.509 | 1,177.5 |
+| Base VQ-VAE | 70.85 | 0.286 | 19.87 | 0.644 | 0.728 | 0.225 | 1,140.8 |
+| Adapted VQ-VAE | 83.28 | 0.469 | 20.78 | 0.636 | 0.869 | 0.509 | 1,155.4 |
 
-- CubeSats
-- small satellites
-- disaster-response missions
-- low-bandwidth ground-station windows
-- onboard AI systems with limited power and memory
+Adapted minus base VQ-VAE was **+12.43 SUS** (95% event-paired bootstrap CI +8.74 to +16.31) and **+0.183 proxy Dice** (+0.122 to +0.245). Adapted minus JPEG2000 was **-11.85 SUS** (-15.14 to -8.72) and **-0.064 Dice** (-0.113 to -0.018). The adapted model also increased predicted-positive area on negative chips by 0.284 relative to the base model.
 
-For wildfire monitoring, a perfect-looking full image is not always the most urgent need. A user may need to know:
+These observations establish a working platform and a clear PhD research problem. They do **not** establish superiority over JPEG2000, operational wildfire benefit or independent geographic generalisation. The dNBR masks are quantised spectral proxies, all selected validation countries occur in training, and patch event IDs do not prove source-footprint independence. The 37-pair EcoFireBias test cohort remains sealed and unscored.
 
-> Where is the fire? Where is the smoke? Which regions matter most?
+Read [RESEARCH_STATUS.md](RESEARCH_STATUS.md) before citing results. The complete frozen report is [VALIDATION_REPORT.md](results/future_satellite_cohort_audit/ecofirebias_official_validation/VALIDATION_REPORT.md).
 
-This repository explores a system that compresses images according to **semantic utility**, meaning mission usefulness.
-
----
-
-## 2. One-Sentence Summary
-
-> This project transmits learned image tokens according to wildfire importance, preserving mission-critical Earth Observation information under severe bandwidth constraints.
-
----
-
-## 3. Key Results So Far
-
-The current benchmark uses DFire, FLAME, and Sentinel-2/CEMS wildfire-related imagery.
-
-| Dataset | Images | SUS | Detector Retention | Bandwidth Saved | Compression Ratio |
-|---|---:|---:|---:|---:|---:|
-| DFire | 50 | 83.14 | 0.849 | 95.10% | 25.30x |
-| FLAME | 18 | 65.84 | 0.834 | 96.27% | 55.51x |
-| Sentinel-2/CEMS | 100 | 79.52 | 0.741 | 99.35% | 155.77x |
-
-**SUS** means **Semantic Utility Score**.  
-It measures how much wildfire-relevant information survives compression and reconstruction.
-
-Additional 500-patch Sentinel-2 conventional codec validation:
-
-| Baseline | Patches | SUS | Detector Retention | PSNR | SSIM | Bandwidth Saved | Compression Ratio |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| JPEG2000 rate-20 | 500 | 95.15 | 0.964 | 30.94 | 0.978 | 95.01% | 20.04x |
-| CCSDS-style wavelet proxy Q24 | 500 | 82.74 | 0.881 | 25.35 | 0.934 | 93.34% | 23.93x |
-
-The CCSDS-style result is a transform-coding proxy, **not** a certified CCSDS implementation.
-
-Model improvement Step 1 identified a better operating point for the current utility-aware model:
-
-| Utility-Aware Retention | SUS | Detector Retention | Bandwidth Saved | Compression Ratio |
-|---:|---:|---:|---:|---:|
-| 50% | 82.54 | 0.783 | 99.31% | 145.36x |
-| **80% recommended** | **90.49** | **0.907** | **99.07%** | **107.77x** |
-| 100% full VQ-VAE | 92.81 | 0.947 | 98.98% | 99.08x |
-
-This improves the research story: 80% retention preserves most of the semantic utility of full VQ-VAE while keeping stronger compression than the full-token setting.
-
-Model improvement Step 2 adds detail-aware token scoring. This gives extra priority to structural boundaries such as fire fronts, smoke edges, infrastructure outlines, and burn-scar contours when utility scores are tied.
-
-| Controlled Token Test | Boundary Retention at 10% Tokens |
-|---|---:|
-| Utility + entropy only | 28.57% |
-| Detail-aware utility scoring | 92.86% |
-
-This is controlled component evidence, not yet a full dataset-level claim. The next benchmark step is to compare `full_system` against `without_detail_term` across Sentinel-2 retention experiments.
-
-Model improvement Step 3 ran that dataset-level check on 100 Sentinel-2 patches at the recommended 80% token-retention operating point:
-
-| 80% Retention Variant | SUS | Detector Retention | PSNR | SSIM | LPIPS |
-|---|---:|---:|---:|---:|---:|
-| Without detail term | 85.47 | 0.877 | 21.74 | 0.854 | 0.5861 |
-| Detail-aware scoring | 85.53 | 0.878 | 21.81 | 0.855 | 0.5855 |
-
-Interpretation: the detail term gives a small but statistically significant improvement in reconstruction quality (PSNR, SSIM, LPIPS) while leaving SUS and detector retention broadly unchanged. This is useful, bounded evidence: detail-aware scoring helps visual/structural preservation, but does not yet create a large wildfire-utility jump.
-
-Model improvement Step 4 scaled the same ablation to **500 Sentinel-2 patches**:
-
-| 80% Retention Variant | Images | SUS | Detector Retention | PSNR | SSIM | LPIPS |
-|---|---:|---:|---:|---:|---:|---:|
-| Without detail term | 500 | 89.29 | 0.904 | 20.06 | 0.800 | 0.6020 |
-| Detail-aware scoring | 500 | 88.97 | 0.901 | 20.13 | 0.803 | 0.6007 |
-
-Interpretation: the 500-patch result confirms the trade-off. Detail-aware scoring improves PSNR, SSIM, and LPIPS, but slightly reduces SUS and detector retention. For the primary wildfire semantic-utility objective, the no-detail selector is currently stronger. Detail-aware scoring should be treated as an optional reconstruction-balanced mode rather than the default mission-utility mode.
-
-Model improvement Step 5 applies that decision in the software. The default token selection mode is now **mission_utility**, using utility + entropy + cost without the detail term. The detail-aware selector remains available as **reconstruction_balanced** for demos or experiments that prioritize visual reconstruction quality.
-
-Model improvement Step 6 starts the next research direction: a **mode-conditioned learned token selector**. This optional PyTorch model predicts token priorities from VQ-VAE token IDs, utility maps, entropy/detail features, and the requested mode. It is implemented and unit tested, but not yet trained or used as the default API path.
-
-Model improvement Step 7 trained that learned selector on **100 Sentinel-2 patches for 10 epochs** using teacher distillation from the validated fixed selectors. Mean training loss decreased from **0.023312** to **0.004012**. This shows the learned selector can fit the mode-conditioned teacher signal; it still needs held-out benchmarking before it should be used in the API.
-
-Model improvement Step 8 scaled training to **1,500 real Sentinel-2/CEMS-derived patches** with a reproducible 80/20 train/validation split. The learned selector trained on 1,200 patches and validated on 300 held-out patches. Final train loss was **0.002844** and final validation loss was **0.003845**.
-
-Model improvement Step 9 adds the route for true mask-supervised model improvement. The repository now supports research wildfire datasets such as **CEMS-HLS**, **HLS Burn Scars**, **FireScope-Bench**, and **EO4WildFires** through a reproducible download/manifest script. This is the recommended path for improving the AI selector because it trains token priorities from real wildfire/burn-scar masks rather than only from hand-designed utility heuristics.
-
-To preview the dataset plan:
-
-```bash
-python scripts/download_research_wildfire_datasets.py --datasets cems_hls hls_burn_scars --profile small
-```
-
-To download the controlled small profile and build the training manifest:
-
-```bash
-python scripts/download_research_wildfire_datasets.py --datasets cems_hls hls_burn_scars --profile small --execute
-```
-
-To train the mask-supervised selector after data preparation:
-
-```bash
-python scripts/train_mask_supervised_token_selector.py --manifest datasets/research_wildfire/wildfire_research_manifest.csv --epochs 8
-```
-
-Important honesty note:
-
-> JPEG remains a very strong baseline for general image reconstruction. This project does not claim to replace JPEG everywhere. The research question is whether mission utility can be preserved efficiently under extreme satellite communication constraints.
-
----
-
-## 4. How The System Works
-
-Visual architecture and result diagrams are available in:
-
-[CompressAI Visual Diagram Pack](docs/diagrams/visual_diagram_pack.md)
+## System Pipeline
 
 ```text
-Sentinel-2 / Wildfire Image
-        ↓
-Wildfire Utility Detector
-        ↓
-Semantic Utility Map
-        ↓
-VQ-VAE Encoder
-        ↓
-Utility-Aware Token Ranking
-        ↓
-Adaptive Transmission
-        ↓
-Reconstruction
-        ↓
-SUS + Detector Retention Evaluation
+Sentinel-2 or wildfire image
+            |
+            v
+Wildfire utility estimator -> utility map
+            |
+            v
+VQ-VAE encoder -> discrete tokens
+            |
+            v
+Utility-aware ranking -> byte-limited serialised payload
+            |
+            v
+VQ-VAE decoder -> reconstructed image
+            |
+            v
+SUS components + independent proxy mask + quality and payload metrics
 ```
 
-Plain-English explanation:
+The receiver reconstructs from transmitted token codes and the transmitted selection mask only. Historical experiments that used information from the untransmitted token grid are retained as development history and are not current publication evidence.
 
-1. The system receives an image.
-2. It estimates which areas are important for wildfire monitoring.
-3. It converts the image into learned tokens.
-4. It ranks the tokens by mission importance.
-5. It keeps the most important tokens when bandwidth is limited.
-6. It reconstructs the image.
-7. It measures how much wildfire information survived.
+## Release Model
 
----
-
-## 5. Repository Structure
+The release model is identified as:
 
 ```text
-backend/          FastAPI application and compression services
-frontend/         Streamlit demo dashboard
-semantic_ai/      wildfire, flood, and ship utility detectors
-token_selection/  utility-aware token ranking and pruning
-metrics/          Semantic Utility Score and related metrics
-communication/    satellite downlink and bandwidth analysis
-transmission/     energy and token transmission models
-evaluation/       benchmark and statistical evaluation pipelines
-datasets/         dataset loader code only; raw datasets are not committed
-scripts/          command-line runners for experiments and reports
-tests/            automated checks for core components
-reports/          proposal, experiment report, and supervisor material
-results/          summary CSVs and publication-ready result tables
-docs/             methodology and code walkthrough documentation
+model_id: vqvae-ecofirebias-adapted-2026-09
+architecture: VQ-VAE, 8192 codes, 256-dimensional codes, stride 16
+checkpoint: models/checkpoints/vqvae_ecofirebias_train_adapted.pt
+sha256: 668cf5bda5c69b196d70306dbc6ed576c2675d372ffcfe2605e53a40286011f6
+status: experimental; failed advancement gate; not approved for sealed-test scoring
 ```
 
----
+Large checkpoint files are intentionally excluded from Git. See [MODEL_CARD.md](MODEL_CARD.md) for training provenance, limitations and correct use. The API verifies the expected SHA-256 hash when the default release checkpoint is loaded. For a custom checkpoint, set both `COMPRESSAI_CHECKPOINT_PATH` and `COMPRESSAI_CHECKPOINT_SHA256`; an empty hash disables verification for local development.
 
-## 6. Installation
+## Repository Structure
+
+```text
+backend/          FastAPI routes and services
+frontend/         Streamlit research dashboard
+src/models/       VQ-VAE implementation
+semantic_ai/      wildfire utility and burn-scar models
+token_selection/  fixed and learned token-ranking methods
+evaluation/       matched-rate, label-fidelity and validation pipelines
+communication/    satellite-link analysis
+datasets/         dataset loaders and preparation code
+scripts/          training, evaluation, audit and report commands
+tests/            automated regression and protocol checks
+results/          frozen summaries and experiment records
+reports/          application proposal and evidence briefs
+docs/             methods, diagrams and validation documentation
+```
+
+## Installation
 
 Python 3.11 is recommended.
 
@@ -199,226 +90,106 @@ Python 3.11 is recommended.
 python -m venv .venv
 ```
 
-On Windows:
+Windows:
 
-```bash
+```powershell
 .venv\Scripts\activate
+pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-On macOS/Linux:
+macOS or Linux:
 
 ```bash
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
----
+Place a compatible checkpoint at the configured path before running compression. Datasets and model weights are not included because of size and source-specific licensing.
 
-## 7. Model Checkpoint
+## Run the Application
 
-The public repository does **not** include large model checkpoint files.
-
-Expected checkpoint location:
-
-```text
-checkpoints/vqvae_s16k8.pt
-```
-
-You can also set a custom path:
-
-```bash
-set COMPRESSAI_CHECKPOINT_PATH=path\to\your\checkpoint.pt
-```
-
-On macOS/Linux:
-
-```bash
-export COMPRESSAI_CHECKPOINT_PATH=path/to/your/checkpoint.pt
-```
-
-If you only want to inspect the code, reports, and results, you do not need the checkpoint.  
-If you want to run image compression or reconstruction, you need a compatible VQ-VAE checkpoint.
-
----
-
-## 8. Run The API
-
-Start the FastAPI backend:
+FastAPI backend:
 
 ```bash
 uvicorn backend.app:app --reload
 ```
 
-Open the API documentation:
+API documentation: `http://localhost:8000/docs`
+
+Main endpoints:
 
 ```text
-http://localhost:8000/docs
-```
-
-Main endpoint:
-
-```http
+GET  /health
 POST /compress
-```
-
-Research endpoints:
-
-```http
-POST /analyze-semantic-regions
-POST /simulate-transmission
+POST /reconstruct
 POST /benchmark
+POST /simulate-transmission
+POST /analyze-semantic-regions
 ```
 
----
-
-## 9. Run The Demo Dashboard
-
-Start the Streamlit frontend:
+Streamlit dashboard:
 
 ```bash
 streamlit run frontend/streamlit_app.py
 ```
 
-Open:
+Dashboard: `http://localhost:8501`
 
-```text
-http://localhost:8501
-```
+## Verification and Tests
 
-The dashboard lets a user upload an image and view:
-
-- original image
-- reconstructed image
-- compression ratio
-- bandwidth saved
-- semantic token count
-- mission utility metrics
-
----
-
-## 10. Run Tests
-
-Run the basic automated checks:
+Verify the release metadata, frozen evidence and optional local checkpoint:
 
 ```bash
-pytest
+python scripts/verify_research_release.py
 ```
 
-These tests check important internal pieces such as:
+Run the automated tests:
 
-- image metrics
-- semantic region analysis
-- token pruning
-- satellite transmission simulation
-
----
-
-## 11. Reproduce Summary Results
-
-The public repository includes summary CSV files under:
-
-```text
-results/summary_tables/
+```bash
+pytest -q
 ```
 
-The main reports are:
+The complete frozen evaluation requires separately obtained source data. The repository includes publishable hashes, plans, reports and scripts needed to inspect the protocol without redistributing licensed imagery or machine-specific path manifests.
 
-```text
-reports/experiment_results_2000_word_report.md
-reports/phd_application_research_proposal.md
-reports/final_supervisor_ready_phd_proposal.md
-```
+## Research and Application Documents
 
-To rerun full benchmarks, you need the datasets locally. Raw datasets are not committed because they are large and may have separate licenses.
+- [Current PhD proposal](reports/phd_proposal_submission_2026.md)
+- [Application-pack index](reports/phd_application_index_2026.md)
+- [Preliminary evidence brief](career_evidence_pack/phd/phd_evidence_brief_2026.md)
+- [Submission reconciliation](career_evidence_pack/phd/submission_reconciliation_2026.md)
+- [Matched-rate validation notes](docs/matched_rate_validation.md)
+- [Visual diagram pack](docs/diagrams/visual_diagram_pack.md)
 
----
+Older proposal files and exploratory result directories remain for provenance. They are superseded where they conflict with the September 2026 frozen validation report.
 
-## 12. Research Reports
+## Safe Interpretation
 
-Useful documents:
+Appropriate claim:
 
-- [Experiment Results Report](reports/experiment_results_2000_word_report.md)
-- [Testing and Validation Report](reports/testing_validation_report.md)
-- [JPEG2000 / CCSDS-Style Baseline Report](results/space_codec_baselines_500/space_codec_baseline_report.md)
-- [Model Improvement Step 1: Operating Point Analysis](results/model_improvement_step1_operating_points/operating_point_analysis_report.md)
-- [Model Improvement Step 2: Detail-Aware Token Scoring](results/model_improvement_step2_token_scoring/token_scoring_improvement_report.md)
-- [Model Improvement Step 3: Sentinel-2 Detail-Term Ablation](results/model_improvement_step3_detail_ablation/detail_term_ablation_report.md)
-- [Model Improvement Step 4: 500-Patch Detail-Term Ablation](results/model_improvement_step4_detail_ablation_500/detail_term_ablation_report.md)
-- [Model Improvement Step 5: Mission-Utility Default Selector](results/model_improvement_step5_mission_utility_default/mission_utility_default_report.md)
-- [Model Improvement Step 6: Mode-Conditioned Learned Token Selector](results/model_improvement_step6_mode_conditioned_selector/mode_conditioned_selector_report.md)
-- [Model Improvement Step 7: Learned Selector Training](results/model_improvement_step7_learned_selector_training/training_report.md)
-- [Model Improvement Step 8: Large Sentinel-2 Training](results/model_improvement_step8_large_satellite_training/training_report.md)
-- [PhD Application Research Proposal](reports/phd_application_research_proposal.md)
-- [Supervisor-Ready Proposal](reports/final_supervisor_ready_phd_proposal.md)
-- [Code Walkthrough](docs/code_walkthrough.md)
+> Training adaptation improved the VQ-VAE on a frozen Sentinel-2 validation cohort, while JPEG2000 remained stronger at the tested 1,200-byte ceiling. The result motivates independent-label, scene-separated and exactly rate-matched PhD research.
 
----
+Unsupported claims:
 
-## 13. Who Is This For?
+- the learned method beats JPEG2000;
+- the validation cohort is geographically independent;
+- quantised dNBR proxies are manually verified ground truth;
+- the sealed test cohort has been evaluated;
+- simulated communication or energy estimates are measured flight performance;
+- the current software is deployment-ready for spacecraft.
 
-This project is useful for:
+## Next Scientifically Valid Improvement
 
-- Earth Observation researchers
-- PhD supervisors
-- remote sensing groups
-- satellite AI teams
-- space-tech incubators
-- wildfire monitoring researchers
-- edge AI engineers
-- semantic communication researchers
+The next model comparison should use a genuinely untouched, licensed Sentinel-2 cohort with independent masks, source-scene and footprint separation, positive and negative cases, and a protocol frozen before model scoring. The primary endpoint should combine SUS with independent-mask overlap and a negative-scene specificity constraint. Repeated tuning on the existing 18-event development or 60-event validation cohorts would weaken, not improve, the evidence.
 
----
+The bounded implementation path is documented in [Model Improvement Plan v0.2](docs/model_improvement_plan_v0_2.md).
 
-## 14. Current Limitations
+## Citation
 
-The project is a research prototype, not a flight-certified satellite system.
+See [CITATION.cff](CITATION.cff). Until a preprint is publicly archived, cite this repository as software rather than as a peer-reviewed publication.
 
-Known limitations:
+## Author
 
-- Sentinel-2 validation currently uses a 100-scene benchmark, not yet 500+ scenes.
-- JPEG remains stronger for many general reconstruction settings.
-- Large datasets and checkpoints are not included in this public repo.
-- Real Jetson or flight-hardware deployment still needs further validation.
-- FIRMS and burned-area label alignment should be expanded.
-- Detail-aware token scoring improves reconstruction metrics modestly, but slightly reduces SUS and detector retention on the 500-patch Sentinel-2 ablation.
-- The learned mode-conditioned selector has completed 1,500-patch Sentinel-2 training, but still needs held-out dataset-level compression validation.
-
----
-
-## 15. Roadmap
-
-Next research steps:
-
-- make the no-detail selector the mission-utility default and keep detail-aware scoring as an optional reconstruction-balanced mode
-- train and benchmark the mode-conditioned learned token selector
-- run learned-vs-fixed selector benchmarking on held-out Sentinel-2 patches
-- improve FIRMS and burn-scar label alignment
-- produce an arXiv preprint
-- add a short demo video
-- benchmark on Jetson-class hardware
-- prepare IEEE/IGARSS-style workshop submission
-
----
-
-## 16. Suggested Citation
-
-```bibtex
-@misc{jayakumar2026spacesemanticcompression,
-  title={Semantic Utility-Aware Compression for Wildfire-Centric Earth Observation Systems},
-  author={Jayakumar, Athul},
-  year={2026},
-  note={Research prototype for semantic communication and edge intelligence in Earth Observation}
-}
-```
-
----
-
-## 17. Contact
-
-Author: **Athul Jayakumar**  
-Research focus: AI, semantic communication, neural compression, Earth Observation, and edge intelligence for satellites.
+**Athul Jayakumar**
+Research focus: Earth Observation AI, neural compression, semantic communication and resource-constrained edge intelligence.

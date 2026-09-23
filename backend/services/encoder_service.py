@@ -9,6 +9,7 @@ readers can understand where the file fits before reading implementation details
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import Any
@@ -24,8 +25,14 @@ logger = logging.getLogger(__name__)
 class EncoderService:
     """Lazy VQ-VAE loader and token encoder."""
 
-    def __init__(self, checkpoint_path: Path, device: str = "auto") -> None:
+    def __init__(
+        self,
+        checkpoint_path: Path,
+        device: str = "auto",
+        expected_sha256: str = "",
+    ) -> None:
         self.checkpoint_path = checkpoint_path
+        self.expected_sha256 = expected_sha256.strip().lower()
         self.device = resolve_device(device)
         self._model: VQVAE | None = None
         self._config: dict[str, Any] | None = None
@@ -54,6 +61,8 @@ class EncoderService:
         if not self.checkpoint_path.exists():
             raise FileNotFoundError(f"Checkpoint not found: {self.checkpoint_path}")
 
+        self._verify_checkpoint_hash()
+
         logger.info("Loading VQ-VAE checkpoint from %s on %s", self.checkpoint_path, self.device)
         try:
             checkpoint = torch.load(self.checkpoint_path, map_location="cpu", weights_only=True)
@@ -69,3 +78,18 @@ class EncoderService:
         model.load_state_dict(checkpoint["model"])
         model.eval()
         return model
+
+    def _verify_checkpoint_hash(self) -> None:
+        """Reject a silently changed release checkpoint before model loading."""
+        if not self.expected_sha256:
+            return
+        digest = hashlib.sha256()
+        with self.checkpoint_path.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+        actual = digest.hexdigest()
+        if actual != self.expected_sha256:
+            raise ValueError(
+                f"Checkpoint SHA-256 mismatch for {self.checkpoint_path}: "
+                f"expected {self.expected_sha256}, got {actual}"
+            )

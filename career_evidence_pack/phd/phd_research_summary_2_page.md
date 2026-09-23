@@ -1,5 +1,7 @@
 # PhD Research Summary
 
+> Historical summary. Its preliminary-evidence framing predates the frozen 2026 matched-byte comparisons. For applications, use [the current evidence brief](phd_evidence_brief_2026.md) and reconcile the proposal before submission.
+
 ## Proposed Title
 
 Semantic Utility-Aware Compression for Wildfire-Centric Earth Observation Systems

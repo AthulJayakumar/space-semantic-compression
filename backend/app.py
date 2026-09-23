@@ -15,13 +15,14 @@ from backend.logging_config import configure_logging
 from backend.routes.compress import router as compress_router
 from backend.routes.research import router as research_router
 from backend.routes.reconstruct import router as reconstruct_router
+from src.release import MODEL_ID, MODEL_STATUS, PROJECT_VERSION
 
 settings = get_settings()
 configure_logging(settings.log_level)
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version=PROJECT_VERSION,
     description="AI semantic token transmission for low-bandwidth environments.",
 )
 
@@ -39,5 +40,11 @@ app.include_router(reconstruct_router)
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, str | bool]:
+    return {
+        "status": "ok",
+        "version": PROJECT_VERSION,
+        "model_id": MODEL_ID,
+        "model_status": MODEL_STATUS,
+        "checkpoint_present": settings.checkpoint_path.is_file(),
+    }
